@@ -11,8 +11,22 @@ A single-file HTML match-3 game (Candy Crush Saga style). Touch friendly, no ads
 - 6 位英雄（战士、法师、盗贼、牧师、弓箭手、召唤师），每关派出一位，各有主动和被动技能，可用金币升级
 - 所有图形与音效均由代码实时生成，无外部资源
 
+## 在线试玩 / Play online
+
+https://sunliangqin.github.io/sweet-saga-web/
+
 ## 运行 / Run
 
 直接用浏览器打开 `index.html` 即可，无需构建或服务器。
 
 Open `index.html` in any modern browser — no build step or server needed.
+
+## 发布 / Publish
+
+本仓库为私有仓库；网页通过公开仓库 [sweet-saga-web](https://github.com/sunliangqin/sweet-saga-web) 的 GitHub Pages 发布。修改 `index.html` 并提交后，运行：
+
+This repo is private; the page is served by GitHub Pages from the public repo `sunliangqin/sweet-saga-web`. After committing changes to `index.html`, run:
+
+```powershell
+.\publish.ps1 -Message "描述这次更新"
+```

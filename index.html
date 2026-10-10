@@ -171,7 +171,7 @@ button{font-family:inherit;-webkit-appearance:none;appearance:none}
 #mapHeroes{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:8px;padding:8px 22px 8px 8px;font-size:22px;z-index:2}
 #mapHeroes:active{transform:translateX(-50%) translateY(4px)}
 #mapHeroes img{width:44px;height:44px;border-radius:50%;border:2px solid #fff}
-.hero{--hs:70px;--hc:#ff4fa8;position:relative;width:var(--hs);height:var(--hs);border:0;padding:0;background:none;pointer-events:auto;touch-action:manipulation;cursor:pointer;flex:0 0 auto;transition:transform .08s}
+.hero{--hs:70px;--hc:#ff4fa8;position:relative;z-index:-1;width:var(--hs);height:var(--hs);border:0;padding:0;background:none;pointer-events:auto;touch-action:manipulation;cursor:pointer;flex:0 0 auto;transition:transform .08s}
 .hero:active{transform:translateY(3px)}
 .hero img{position:absolute;left:9%;top:9%;width:82%;height:82%;border-radius:50%;box-shadow:0 3px 6px rgba(0,0,0,.35)}
 .hero .ring{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg);overflow:visible}
@@ -179,7 +179,7 @@ button{font-family:inherit;-webkit-appearance:none;appearance:none}
 .hero .ring .fg{fill:none;stroke:var(--hc);stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset .35s}
 .hero.ready .ring .fg{stroke:#ffe14d}
 .hero.ready{animation:heroReady .55s ease-in-out infinite alternate}
-.hero.ready img{box-shadow:0 0 0 3px #fff,0 0 16px 6px #ffe14d}
+.hero.ready img{box-shadow:0 0 0 3px #fff,0 0 16px 6px var(--ha,#ffe14d)}
 .hero.aim{animation:pulse .45s infinite alternate}
 .hero.aim img{box-shadow:0 0 0 3px #fff,0 0 18px 8px #ff4fa8}
 .hero .hlv{position:absolute;left:-4px;bottom:-3px;background:var(--hc);border:2px solid #fff;border-radius:999px;font-size:11px;font-weight:900;padding:1px 5px;color:#fff;line-height:15px}
@@ -261,11 +261,7 @@ button{font-family:inherit;-webkit-appearance:none;appearance:none}
 @keyframes nodeIn{from{transform:scale(0)}}
 .avatar{position:absolute;width:48px;height:48px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 3px rgba(255,79,168,.7),0 6px 12px rgba(0,0,0,.35);pointer-events:none;z-index:2;animation:avatarHop .9s ease-in-out infinite alternate}
 @keyframes avatarHop{from{transform:translateY(0) rotate(-6deg)}to{transform:translateY(-9px) rotate(6deg)}}
-.hero::before{content:'';position:absolute;inset:-8px;border-radius:50%;opacity:0;transition:opacity .3s;pointer-events:none;
- background:conic-gradient(rgba(255,255,255,0),rgba(255,240,140,.95),rgba(255,255,255,0) 28%,rgba(255,120,210,.9),rgba(255,255,255,0) 62%,rgba(120,220,255,.95),rgba(255,255,255,0));
- -webkit-mask:radial-gradient(circle,transparent 56%,#000 60%);mask:radial-gradient(circle,transparent 56%,#000 60%);animation:spin 1.3s linear infinite}
-.hero.ready::before{opacity:1}
-@keyframes spin{to{transform:rotate(360deg)}}
+.hero .aura{position:absolute;left:-80%;top:-110%;width:260%;height:280%;pointer-events:none}
 #cutin{position:absolute;inset:0;pointer-events:none;z-index:4;display:none;overflow:hidden}
 #cutin.show{display:block}
 #cutin .ci-band{position:absolute;left:-10%;right:-10%;top:50%;height:148px;margin-top:-74px;
@@ -2228,6 +2224,193 @@ const HFX = {
     this.rain(50, 1200, () => this.part({ kind: 'dot', add: true, fadeIn: true, x: Math.random() * w, y: h + 10, vx: (Math.random() - .5) * 40, vy: -(200 + Math.random() * 320), max: 1.3, size: 3 + Math.random() * 5, color: 'rgba(255,150,60,.95)' }));
   },
 };
+/* ================= hero-ready aura =================
+   While the active skill is fully charged, a themed effect wraps the hero button. It is drawn on a
+   small canvas inside the button, behind the portrait: mage fire, warrior battle lightning,
+   rogue shadow smoke, priest holy light, archer wind, summoner circle. */
+const FIRE = ['rgba(255,248,215,1)', 'rgba(255,190,70,.95)', 'rgba(255,90,30,.85)', 'rgba(150,50,190,.5)'];
+const Aura = {
+  cv: null, g: null, id: null, want: false, lvl: 0, ps: [], last: 0, chk: 0, s: 0, d: 1, boom: -1e9,
+  COL: { warrior: '#ffb02e', mage: '#ff7a1a', rogue: '#3dff8a', priest: '#ffe680', archer: '#7fffd9', summoner: '#ff8ad8' },
+  attach(btn) {
+    this.cv = btn ? btn.querySelector('canvas.aura') : null;
+    this.g = this.cv ? this.cv.getContext('2d') : null;
+    this.id = this.cv && G && G.hero ? G.hero.id : null;
+    this.want = false; this.lvl = 0; this.ps.length = 0; this.s = 0;
+  },
+  set(on) {
+    if (!this.g) return;
+    if (on && !this.want) { this.want = true; this.last = NOW; this.fit(); this.ignite(); }
+    else if (!on) this.want = false;
+  },
+  fit() {
+    const s = this.cv.parentNode.offsetWidth || 70, d = Math.min(2, devicePixelRatio || 1);
+    if (s === this.s && d === this.d) return;
+    this.s = s; this.d = d; this.W = s * 2.6; this.H = s * 2.8;
+    this.cv.width = Math.round(this.W * d); this.cv.height = Math.round(this.H * d);
+    // button centre inside the canvas, matching the .aura CSS offsets (-80% / -110%)
+    this.cx = this.W / 2; this.cy = this.H * 160 / 280; this.R = s * .47;
+  },
+  part(p) { if (this.ps.length < 170) { p.life = 0; this.ps.push(p); } },
+  emit(rate, dt, fn) { let n = rate * dt; for (; n >= 1; n--) fn(); if (Math.random() < n) fn(); },
+  glowRing(g, rgb, a, r0, r1) {
+    const gr = g.createRadialGradient(this.cx, this.cy, r0, this.cx, this.cy, r1);
+    gr.addColorStop(0, `rgba(${rgb},${a})`); gr.addColorStop(1, `rgba(${rgb},0)`);
+    g.fillStyle = gr; g.beginPath(); g.arc(this.cx, this.cy, r1, 0, Math.PI * 2); g.fill();
+  },
+  // comet-like arc: bright head at angle a, fading tail behind it
+  trail(g, r, a, len, rgb, w, n) {
+    for (let j = 0; j < n; j++) {
+      const a1 = a - j * len / n;
+      g.strokeStyle = `rgba(${j ? rgb : '255,255,255'},${(1 - j / n) * .9})`; g.lineWidth = Math.max(.5, w * (1 - j / n * .7));
+      g.beginPath(); g.arc(this.cx, this.cy, r, a1 - len / n - .01, a1); g.stroke();
+    }
+  },
+  ignite() {
+    this.boom = NOW;
+    const col = this.COL[this.id], k = this.s / 70;
+    for (let i = 0; i < 28; i++) {
+      const a = Math.random() * Math.PI * 2, sp = (80 + Math.random() * 110) * k;
+      this.part({ kind: i % 3 ? 'dot' : 'star', x: this.cx + Math.cos(a) * this.R, y: this.cy + Math.sin(a) * this.R,
+        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, drag: .93, max: .6 + Math.random() * .3, size: (i % 3 ? 7 : 5) * k, color: i % 3 ? col : '#ffffff' });
+    }
+  },
+  step() {
+    if (!this.g || (!this.want && !this.lvl && !this.ps.length)) return;
+    const dt = Math.min(.05, Math.max(0, (NOW - this.last) / 1000)); this.last = NOW;
+    if ((this.chk -= dt) <= 0) { this.chk = .5; this.fit(); }
+    this.lvl = this.want ? Math.min(1, this.lvl + dt * 3) : Math.max(0, this.lvl - dt * 4);
+    const g = this.g, t = NOW / 1000, k = this.s / 70, { cx, cy } = this;
+    g.setTransform(this.d, 0, 0, this.d, 0, 0); g.clearRect(0, 0, this.W, this.H);
+    g.lineCap = 'round'; g.lineJoin = 'round';
+    if (this.lvl > 0 && this.FX[this.id]) {
+      g.save(); g.globalCompositeOperation = 'lighter'; g.globalAlpha = this.lvl;
+      this.FX[this.id](this, g, t, dt, k);
+      const bp = (NOW - this.boom) / 550;
+      if (bp < 1) { g.lineWidth = 6 * k * (1 - bp); g.strokeStyle = `rgba(255,255,255,${1 - bp})`; g.beginPath(); g.arc(cx, cy, this.R * (1 + bp * 1.3), 0, Math.PI * 2); g.stroke(); }
+      g.restore();
+    }
+    for (let i = this.ps.length - 1; i >= 0; i--) {
+      const p = this.ps[i]; p.life += dt;
+      if (p.life >= p.max) { this.ps.splice(i, 1); continue; }
+      if (p.orb) { const o = p.orb; o.a += o.w * dt; o.r += (o.dr || 0) * dt; p.x = cx + Math.cos(o.a) * o.r; p.y = cy + Math.sin(o.a) * o.r; }
+      else {
+        p.vx += (p.ax || 0) * dt; p.vy += (p.ay || 0) * dt;
+        if (p.drag) { const f = Math.pow(p.drag, dt * 60); p.vx *= f; p.vy *= f; }
+        p.x += p.vx * dt; p.y += p.vy * dt;
+      }
+      p.rot = (p.rot || 0) + (p.vr || 0) * dt;
+      const kk = p.life / p.max;
+      if (p.fire) p.color = FIRE[Math.min(3, kk * 4 | 0)];
+      g.save(); g.globalCompositeOperation = p.solid ? 'source-over' : 'lighter';
+      g.globalAlpha = Math.max(0, Math.min(1, (p.fadeIn ? Math.min(1, kk * 5) : 1) * (1 - kk * kk) * (this.want ? 1 : this.lvl)));
+      g.translate(p.x, p.y); g.rotate(p.rot); if (p.stretch) g.scale(.75, p.stretch);
+      HFX.drawPart(g, p, Math.max(.1, p.size * (1 + (p.grow || 0) * kk)));
+      g.restore();
+    }
+  },
+  FX: {
+    mage(A, g, t, dt, k) {
+      const { cx, cy, R } = A;
+      A.glowRing(g, '255,120,30', .75 * (.85 + .15 * Math.sin(t * 9)), R * .9, R * 1.9);
+      A.glowRing(g, '170,60,255', .3, R * 1.2, R * 2.4);
+      if (A.want) {
+        A.emit(95, dt, () => {
+          const a = Math.random() * Math.PI * 2, r = R * (.88 + Math.random() * .14);
+          A.part({ kind: 'dot', fire: 1, x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r * .95, vx: Math.cos(a) * 22 * k,
+            vy: (Math.sin(a) * 14 - 70 - Math.random() * 55) * k, max: .45 + Math.random() * .35, size: (9 + Math.random() * 7) * k, grow: -.75, stretch: 1.7 });
+        });
+        A.emit(9, dt, () => { const a = Math.random() * Math.PI * 2; A.part({ kind: 'dot', x: cx + Math.cos(a) * R, y: cy + Math.sin(a) * R, vx: (Math.random() - .5) * 40 * k, vy: -(90 + Math.random() * 60) * k, max: 1, size: 3 * k, color: 'rgba(255,225,130,1)' }); });
+      }
+      // two small meteors circling the hero
+      for (let i = 0; i < 2; i++) {
+        const a = t * 2.6 + i * Math.PI, x = cx + Math.cos(a) * R * 1.5, y = cy + Math.sin(a) * R * 1.32;
+        g.drawImage(HFX.glow('rgba(255,120,40,.9)'), x - 14 * k, y - 14 * k, 28 * k, 28 * k);
+        g.drawImage(HFX.glow('rgba(255,248,215,1)'), x - 7 * k, y - 7 * k, 14 * k, 14 * k);
+        if (A.want) A.emit(60, dt, () => A.part({ kind: 'dot', fire: 1, x, y, vx: 0, vy: -18 * k, max: .35, size: 8 * k, grow: -.8 }));
+      }
+    },
+    warrior(A, g, t, dt, k) {
+      const { cx, cy, R } = A;
+      A.glowRing(g, '255,170,40', .7 * (.85 + .15 * Math.sin(t * 7)), R * .9, R * 1.8);
+      A.glowRing(g, '255,40,40', .35, R * 1.1, R * 2.3);
+      for (let i = 0; i < 2; i++) {
+        const p = (t * 1.1 + i * .5) % 1;
+        g.lineWidth = 5 * k * (1 - p); g.strokeStyle = `rgba(255,${200 - p * 130 | 0},60,${(1 - p) * .9})`;
+        g.beginPath(); g.arc(cx, cy, R * (1 + p * 1.2), 0, Math.PI * 2); g.stroke();
+      }
+      for (let i = 0; i < 3; i++) if (Math.random() < .55) {
+        const a0 = Math.random() * Math.PI * 2; g.beginPath();
+        for (let j = 0; j <= 6; j++) { const a = a0 + j * .16, r = R * (1.1 + (Math.random() - .5) * .3); j ? g.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r) : g.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); }
+        g.strokeStyle = 'rgba(255,190,70,.5)'; g.lineWidth = 5 * k; g.stroke();
+        g.strokeStyle = 'rgba(255,255,230,.95)'; g.lineWidth = 1.6 * k; g.stroke();
+      }
+      for (let i = 0; i < 4; i++) { const a = t * 1.6 + i * Math.PI / 2; star4(g, cx + Math.cos(a) * R * 1.45, cy + Math.sin(a) * R * 1.45, (7 + 2 * Math.sin(t * 8 + i)) * k, 'rgba(255,240,170,.95)'); }
+      if (A.want) A.emit(26, dt, () => {
+        const a = Math.random() * Math.PI * 2;
+        A.part({ kind: 'dot', x: cx + Math.cos(a) * R, y: cy + Math.sin(a) * R, vx: Math.cos(a) * 20 * k, vy: -(50 + Math.random() * 70) * k, max: .8, size: (3 + Math.random() * 3) * k, color: Math.random() < .5 ? 'rgba(255,120,40,1)' : 'rgba(255,210,90,1)' });
+      });
+    },
+    rogue(A, g, t, dt, k) {
+      const { R } = A;
+      A.glowRing(g, '40,255,130', .45 * (.8 + .2 * Math.sin(t * 5)), R * .9, R * 1.75);
+      if (A.want) {
+        A.emit(28, dt, () => A.part({ kind: 'smoke', solid: 1, orb: { a: Math.random() * Math.PI * 2, r: R * (1 + Math.random() * .2), w: 2.4 + Math.random(), dr: 18 * k }, max: 1.1, size: (15 + Math.random() * 10) * k, grow: .9, fadeIn: 1, color: 'rgba(10,45,25,.6)' }));
+        A.emit(22, dt, () => A.part({ kind: 'star', orb: { a: Math.random() * Math.PI * 2, r: R * 1.15, w: 3, dr: 30 * k }, max: .7, size: (3 + Math.random() * 2) * k, color: '#b8ffd0' }));
+      }
+      for (let i = 0; i < 2; i++) A.trail(g, R * 1.4, t * 5 + i * Math.PI, 1.1, '90,255,150', 5 * k, 12);
+    },
+    priest(A, g, t, dt, k) {
+      const { cx, cy, R } = A;
+      A.glowRing(g, '255,230,140', .7 * (.85 + .15 * Math.sin(t * 4)), R * .9, R * 1.9);
+      for (let i = 0; i < 12; i++) {
+        const a = t * .6 + i * Math.PI / 6, L = R * (i % 2 ? 1.9 : 2.45), w = .1, r0 = R * .9;
+        const gr = g.createLinearGradient(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0, cx + Math.cos(a) * L, cy + Math.sin(a) * L);
+        gr.addColorStop(0, 'rgba(255,240,180,.6)'); gr.addColorStop(1, 'rgba(255,240,180,0)');
+        g.fillStyle = gr; g.beginPath();
+        g.moveTo(cx + Math.cos(a - w) * r0, cy + Math.sin(a - w) * r0); g.lineTo(cx + Math.cos(a) * L, cy + Math.sin(a) * L); g.lineTo(cx + Math.cos(a + w) * r0, cy + Math.sin(a + w) * r0);
+        g.closePath(); g.fill();
+      }
+      const hy = cy - R * 1.78 + Math.sin(t * 3) * 3 * k;
+      g.beginPath(); g.ellipse(cx, hy, R * .72, R * .2, 0, 0, Math.PI * 2);
+      g.lineWidth = 7 * k; g.strokeStyle = 'rgba(255,215,90,.4)'; g.stroke();
+      g.lineWidth = 2.6 * k; g.strokeStyle = 'rgba(255,250,215,.95)'; g.stroke();
+      if (A.want) {
+        A.emit(14, dt, () => { const a = Math.random() * Math.PI * 2, r = R * (1 + Math.random() * .7); A.part({ kind: 'star', x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r, vx: 0, vy: -25 * k, max: .9, fadeIn: 1, size: (3 + Math.random() * 4) * k, color: '#fff3b0' }); });
+        A.emit(1.5, dt, () => A.part({ kind: 'feather', solid: 1, x: cx + (Math.random() - .5) * R * 3, y: cy - R * 2.2, vx: (Math.random() - .5) * 15 * k, vy: 22 * k, max: 2.2, fadeIn: 1, size: 6 * k, vr: (Math.random() - .5) * 2, rot: Math.random() * 6, color: 'rgba(255,255,255,.95)' }));
+      }
+    },
+    archer(A, g, t, dt, k) {
+      const { R } = A;
+      A.glowRing(g, '60,240,180', .65 * (.85 + .15 * Math.sin(t * 6)), R * .9, R * 1.85);
+      for (const [rr, w, ph] of [[1.15, 6, 0], [1.38, 4.6, 2.1], [1.62, 5.4, 4.2]]) {
+        A.trail(g, R * rr, t * w + ph, 1.4, '20,170,120', 7 * k, 10);
+        A.trail(g, R * rr, t * w + ph, 1.4, '150,255,220', 3.2 * k, 14);
+      }
+      if (A.want) A.emit(16, dt, () => A.part({ kind: 'leaf', solid: 1, orb: { a: Math.random() * Math.PI * 2, r: R * (1.2 + Math.random() * .4), w: 4.5, dr: 25 * k }, max: 1.1, fadeIn: 1, size: (6 + Math.random() * 3) * k, vr: 6, rot: Math.random() * 6, color: ['#3fbf6f', '#1f9c55', '#7be0a0'][rnd(3)] }));
+    },
+    summoner(A, g, t, dt, k) {
+      const { cx, cy, R } = A, r = R * 1.5, rot = t * .9;
+      A.glowRing(g, '120,255,230', .45, R * .9, R * 1.8);
+      A.glowRing(g, '255,120,220', .28, R * 1.3, R * 2.3);
+      g.strokeStyle = 'rgba(140,255,235,.85)'; g.lineWidth = 1.8 * k;
+      for (const q of [1, .86]) { g.beginPath(); g.arc(cx, cy, r * q, 0, Math.PI * 2); g.stroke(); }
+      g.beginPath();
+      for (let i = 0; i <= 5; i++) { const a = rot - Math.PI / 2 + (i * 2 % 5) * Math.PI * 2 / 5, x = cx + Math.cos(a) * r * .86, y = cy + Math.sin(a) * r * .86; i ? g.lineTo(x, y) : g.moveTo(x, y); }
+      g.stroke();
+      g.save(); g.translate(cx, cy); g.rotate(-rot * 1.3); g.fillStyle = 'rgba(255,170,230,.95)';
+      for (let i = 0; i < 20; i++) { g.rotate(Math.PI / 10); g.fillRect(r * .9, -1 * k, r * .07, 2 * k); }
+      g.restore();
+      const cols = ['255,107,139', '255,210,63', '92,225,160', '92,200,255', '196,139,255'];
+      cols.forEach((c, i) => {
+        const a = -t * 2.2 + i * Math.PI * 2 / 5, x = cx + Math.cos(a) * R * 1.22, y = cy + Math.sin(a) * R * 1.22;
+        g.drawImage(HFX.glow(`rgba(${c},1)`), x - 9 * k, y - 9 * k, 18 * k, 18 * k);
+        g.drawImage(HFX.glow('rgba(255,255,255,1)'), x - 3.5 * k, y - 3.5 * k, 7 * k, 7 * k);
+      });
+      if (A.want) A.emit(16, dt, () => A.part({ kind: 'star', orb: { a: Math.random() * Math.PI * 2, r: R * 2.1, w: 1.5, dr: -R * 1.6 }, max: .6, fadeIn: 1, size: (3 + Math.random() * 2) * k, color: `rgb(${cols[rnd(5)]})` }));
+    },
+  },
+};
 const SKILLS = {
   async warrior(lv, p) {
     const B = new Blast(); B.noCharge = true;
@@ -2430,7 +2613,7 @@ function startLevel(i, resume) {
   buildGoalUI(); updateHUD(); $('score').textContent = fmt(G.shown); G.starsOn = -1; updateStarBar();
   boardIn = NOW;
   if (resumed) {
-    state = 'play'; busy = false; lastAction = NOW;
+    state = 'play'; busy = false; lastAction = NOW; updateHeroBtn();
     showWord(_t('w.welcome'), 'blue');
   } else {
     state = 'intro'; busy = true;
@@ -2827,12 +3010,14 @@ function updateHUD() {
 const RING = +(2 * Math.PI * 29).toFixed(2);
 function buildHeroBtn() {
   const slot = $('heroSlot');
-  if (!G || !G.hero) { slot.innerHTML = ''; return; }
+  if (!G || !G.hero) { slot.innerHTML = ''; Aura.attach(null); return; }
   const H = HERO[G.hero.id];
-  slot.innerHTML = `<button class="hero" id="heroBtn" style="--hc:${H.color}" title="${H.cls}${H.name}：${H.active.name}" aria-label="${H.name}：${H.active.name}">
+  slot.innerHTML = `<button class="hero" id="heroBtn" style="--hc:${H.color};--ha:${Aura.COL[H.id]}" title="${H.cls}${H.name}：${H.active.name}" aria-label="${H.name}：${H.active.name}">
+    <canvas class="aura"></canvas>
     <svg class="ring" viewBox="0 0 64 64"><circle class="bgc" cx="32" cy="32" r="29"/><circle class="fg" id="heroRing" cx="32" cy="32" r="29" stroke-dasharray="${RING}" stroke-dashoffset="${RING}"/></svg>
     <img src="${heroImg(H.id)}" alt=""><span class="hlv">Lv${heroLv(H.id).a}</span><span class="tap">${_t('tap')}</span><span class="pet hidden" id="heroPet"></span></button>`;
   $('heroBtn').addEventListener('click', onHeroTap);
+  Aura.attach($('heroBtn'));
   updateHeroBtn();
 }
 function cutIn(H, name, shoutKey) {
@@ -2851,6 +3036,7 @@ function updateHeroBtn() {
   $('heroRing').setAttribute('stroke-dashoffset', (RING * (1 - f)).toFixed(2));
   b.classList.toggle('ready', f >= 1 && state === 'play' && !heroAim);
   b.classList.toggle('aim', heroAim);
+  Aura.set(f >= 1 && state === 'play');
   const pe = $('heroPet');
   if (G.pets.length) {
     pe.classList.remove('hidden');
@@ -3297,6 +3483,7 @@ function frame(t) {
     stepTweens();
     if (screen === 'game' && G) { tickScore(); checkHint(); render(); }
     HFX.step();
+    if (screen === 'game') Aura.step();
     stepConfetti(t);
   } catch (e) { console.error(e); }
 }
@@ -3355,7 +3542,7 @@ window.SweetSaga = {
   chooseHero, cast: p => castHero(p), fill: () => { if (G && G.hero) { G.hero.charge = G.hero.cost; updateHUD(); } },
   findGroups, pickAreas, HP, get jelly() { return jelly; }, noHero: () => { if (G) { G.hero = null; buildHeroBtn(); } },
   audio: { get state() { return { ctx: Snd.ctx && Snd.ctx.state, track: Music.track, playing: Music.playing, want: Music.want, gain: Music.bus && +Music.bus.gain.value.toFixed(3) }; }, ctx: () => Snd.ctx, bus: () => Music.bus, play: n => Music.play(n) },
-  HFX,
+  HFX, Aura,
 };
 init();
 })();

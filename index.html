@@ -214,6 +214,7 @@ button{font-family:inherit;-webkit-appearance:none;appearance:none}
 .hd-head .hn{font-size:22px;font-weight:900}
 .hd-head .hc{font-size:14px;font-weight:900;color:#e0338a}
 .hd-head .ht{font-size:13px;line-height:1.35;margin-top:2px}
+.hd-theme{font-size:12px;font-weight:900;color:#9b4be0;margin-top:4px}
 .skill{background:#fff;border-radius:16px;padding:10px 12px;margin-top:10px;text-align:left;border:2px solid #f3c1e2}
 .sk-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .sk-name{font-weight:900;font-size:17px}
@@ -478,6 +479,8 @@ const STR = {
   'shout.archer': ['百步穿杨，箭无虚发！', '瞄准——放箭！', '风之箭，贯穿一切！'],
   'shout.summoner': ['出来吧，小熊们！开饭啦！', '伙伴们，交给你们了！', '契约之力——召唤！'],
   'shout.lastStand': ['我……还能战！', '只要还站着，就绝不认输！', '姜饼骑士，永不倒下！'],
+  'theme.warrior': '主题曲《姜饼骑士进行曲》', 'theme.mage': '主题曲《星夜书斋圆舞曲》', 'theme.rogue': '主题曲《暗影小步》',
+  'theme.priest': '主题曲《蜂蜜圣歌》', 'theme.archer': '主题曲《薄荷林间谣》', 'theme.summoner': '主题曲《软糖游行》',
   'toast.lastStand': (h, n) => `${h}奋战到底：+${n} 步！`,
   'toast.ready': (h, s) => `${h}已就绪！点击释放「${s}」`,
   'toast.bearsHome': '小熊软糖们摇摇摆摆地回家啦，拜拜！',
@@ -589,7 +592,8 @@ function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save));
 
 /* ================= sound (synthesized with WebAudio) ================= */
 const Snd = {
-  ctx: null, out: null, nb: null, last: {},
+  ctx: null, out: null, nb: null, last: {}, unlocked: false, silentEl: null,
+  // Called from every tap/click/key handler: audio on phones may only start or resume inside a user gesture.
   init() {
     if (!this.ctx) {
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -599,8 +603,33 @@ const Snd = {
       const len = this.ctx.sampleRate * .6;
       this.nb = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
       const d = this.nb.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      this.playbackSession();
     }
-    if (this.ctx.state === 'suspended') this.ctx.resume();
+    // iOS uses 'interrupted' (calls, app switch) as well as 'suspended'
+    if (this.ctx.state !== 'running') { const p = this.ctx.resume(); if (p && p.then) p.then(() => Music.resume(), () => {}); }
+    if (!this.ctx.onstatechange) this.ctx.onstatechange = () => { if (this.ctx.state === 'running') Music.resume(); };
+    if (!this.unlocked) {
+      const s = this.ctx.createBufferSource(); s.buffer = this.ctx.createBuffer(1, 1, 22050);
+      s.connect(this.ctx.destination); s.start(0); this.unlocked = true;
+    }
+    Music.resume();
+  },
+  // Make iOS treat the game as media playback so sound isn't silenced by the ring/silent switch.
+  playbackSession() {
+    try { if (navigator.audioSession) { navigator.audioSession.type = 'playback'; return; } } catch (e) { /* older Safari */ }
+    const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (!iOS || this.silentEl) return;
+    // Fallback for older iOS: a looping, silent <audio> element switches the session to "playback".
+    const n = 800, buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+    const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+    str(0, 'RIFF'); v.setUint32(4, 36 + n, true); str(8, 'WAVE'); str(12, 'fmt '); v.setUint32(16, 16, true);
+    v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, 8000, true); v.setUint32(28, 8000, true);
+    v.setUint16(32, 1, true); v.setUint16(34, 8, true); str(36, 'data'); v.setUint32(40, n, true);
+    for (let i = 0; i < n; i++) v.setUint8(44 + i, 128);
+    const el = new Audio(URL.createObjectURL(new Blob([buf], { type: 'audio/wav' })));
+    el.loop = true; el.setAttribute('playsinline', '');
+    const p = el.play(); if (p && p.catch) p.catch(() => {});
+    this.silentEl = el;
   },
   ok() { return this.ctx && !save.mute && this.ctx.state === 'running'; },
   tone(f, dur, o) {
@@ -672,6 +701,212 @@ const Snd = {
   },
 };
 // Battle cries: spoken with the device's Chinese text-to-speech voice when available, otherwise a synthesized shout.
+/* ================= background music (procedural, WebAudio) =================
+   All original compositions: a music-box menu theme and one character theme per hero. */
+const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+const PC = { C: 0, 'C#': 1, Db: 1, D: 2, Eb: 3, E: 4, F: 5, 'F#': 6, G: 7, Ab: 8, A: 9, Bb: 10, B: 11 };
+function chordOf(name) {
+  const m = /^([A-G][b#]?)(m?)(7?)$/.exec(name), pc = PC[m[1]];
+  let base = 48 + pc; if (base < 53) base += 12;
+  const iv = m[2] ? [0, 3, 7] : [0, 4, 7];
+  if (m[3]) iv.push(10);
+  return { notes: iv.map(i => base + i), root: 36 + pc - (pc > 7 ? 12 : 0) };
+}
+const Music = {
+  bus: null, want: null, track: null, playing: false, timer: 0, next: 0, step: 0,
+  /* ---- instruments (t = start time, m = MIDI note, d = seconds, v = volume) ---- */
+  env(g, t, v, a, d) { g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(v, t + a); g.gain.exponentialRampToValueAtTime(.0001, t + Math.max(a + .02, d)); },
+  osc(t, type, f, d, v, a, dest, detune) {
+    const c = Snd.ctx, o = c.createOscillator(), g = c.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t); if (detune) o.detune.value = detune;
+    this.env(g, t, v, a || .008, d);
+    o.connect(g); g.connect(dest || this.bus); o.start(t); o.stop(t + Math.max(d, (a || .008) + .02) + .05);
+    return o;
+  },
+  lp(f, q) { const fl = Snd.ctx.createBiquadFilter(); fl.type = 'lowpass'; fl.frequency.value = f; fl.Q.value = q || .7; fl.connect(this.bus); return fl; },
+  vib(o, t, end, f, depth, delay) {
+    const c = Snd.ctx, l = c.createOscillator(), g = c.createGain();
+    l.frequency.value = 5.4; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(f * depth, t + delay);
+    l.connect(g); g.connect(o.frequency); l.start(t); l.stop(end + .05);
+  },
+  noiseHit(t, v, f, d, type) {
+    const c = Snd.ctx, s = c.createBufferSource(), fl = c.createBiquadFilter(), g = c.createGain();
+    s.buffer = Snd.nb; fl.type = type; fl.frequency.value = f;
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    s.connect(fl); fl.connect(g); g.connect(this.bus); s.start(t, Math.random() * .3); s.stop(t + d + .02);
+  },
+  pluck(t, m, d, v) { const f = mtof(m); this.osc(t, 'triangle', f, d, v); this.osc(t, 'sine', f * 2, d * .6, v * .35); },
+  harp(t, m, d, v) { const f = mtof(m); this.osc(t, 'triangle', f, d, v, .004); this.osc(t, 'sine', f * 3, d * .3, v * .12, .004); },
+  bell(t, m, d, v) { const f = mtof(m); this.osc(t, 'sine', f, d, v); this.osc(t, 'sine', f * 2.76, d * .45, v * .22); this.osc(t, 'sine', f * 5.4, d * .2, v * .08); },
+  glock(t, m, d, v) { const f = mtof(m) * 2; this.osc(t, 'sine', f, d, v, .002); this.osc(t, 'sine', f * 4.07, d * .25, v * .25, .002); },
+  bass(t, m, d, v) { this.osc(t, 'triangle', mtof(m), d, v, .012); },
+  pizz(t, m, d, v) { const f = mtof(m), fl = this.lp(f * 4); this.osc(t, 'triangle', f, Math.min(d, .28), v, .004, fl); this.osc(t, 'sawtooth', f, Math.min(d, .12), v * .25, .003, fl); },
+  pad(t, m, d, v) { this.osc(t, 'sine', mtof(m), d, v, d * .35); },
+  strings(t, m, d, v) { const f = mtof(m), fl = this.lp(1500); for (const dt of [-7, 7]) this.osc(t, 'sawtooth', f, d, v * .5, Math.min(.3, d * .4), fl, dt); },
+  organ(t, m, d, v) { const f = mtof(m); [[1, 1], [2, .45], [3, .22], [4, .12]].forEach(([h, k]) => this.osc(t, 'sine', f * h, d, v * k, .12)); },
+  brass(t, m, d, v) {
+    const c = Snd.ctx, f = mtof(m), fl = c.createBiquadFilter();
+    fl.type = 'lowpass'; fl.Q.value = 1.2; fl.connect(this.bus);
+    fl.frequency.setValueAtTime(500, t); fl.frequency.linearRampToValueAtTime(2600, t + .06); fl.frequency.exponentialRampToValueAtTime(1200, t + Math.max(.1, d));
+    for (const dt of [-5, 5]) { const o = this.osc(t, 'sawtooth', f, d, v * .5, .03, fl, dt); this.vib(o, t, t + d, f, .006, .25); }
+  },
+  flute(t, m, d, v) {
+    const f = mtof(m), o = this.osc(t, 'sine', f, d, v, .05); this.vib(o, t, t + d, f, .007, .18);
+    this.osc(t, 'triangle', f * 2, d, v * .08, .05); this.noiseHit(t, v * .25, f * 2, .06, 'bandpass');
+  },
+  voice(t, m, d, v) {
+    const f = mtof(m);
+    for (const dt of [-6, 6]) { const o = this.osc(t, 'sine', f, d, v * .55, .14, null, dt); this.vib(o, t, t + d, f, .006, .3); }
+    this.osc(t, 'triangle', f * 2, d, v * .1, .2);
+  },
+  clarinet(t, m, d, v) { const f = mtof(m), fl = this.lp(1700, .8), o = this.osc(t, 'square', f, d, v, .02, fl); this.vib(o, t, t + d, f, .004, .2); },
+  bassoon(t, m, d, v) { this.osc(t, 'sawtooth', mtof(m), d, v, .02, this.lp(900, 1.5)); },
+  drum(t, v, f0, f1, d) {
+    const c = Snd.ctx, o = c.createOscillator(), g = c.createGain();
+    o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + d * .4);
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g); g.connect(this.bus); o.start(t); o.stop(t + d + .05);
+  },
+  kick(t, v) { this.drum(t, v, 130, 42, .2); },
+  timp(t, v, f) { this.drum(t, v, f * 1.15, f, .6); this.noiseHit(t, v * .3, 300, .12, 'lowpass'); },
+  tom(t, v, f) { this.drum(t, v, f * 1.4, f, .25); },
+  snare(t, v) { this.noiseHit(t, v, 2200, .13, 'bandpass'); this.osc(t, 'triangle', 190, .08, v * .5); },
+  hat(t, v) { this.noiseHit(t, v, 7500, .04, 'highpass'); },
+  shaker(t, v) { this.noiseHit(t, v, 9000, .05, 'highpass'); },
+  snap(t, v) { this.noiseHit(t, v, 2600, .05, 'bandpass'); },
+  wood(t, v, f) { this.osc(t, 'sine', f, .06, v, .001); this.noiseHit(t, v * .4, f * 1.5, .03, 'bandpass'); },
+  /* ---- player ---- */
+  // name: 'menu' or a hero id. Remembered until audio is allowed (first tap) or while muted.
+  play(name) {
+    if (!MTRACKS[name]) name = 'menu';
+    this.want = name;
+    if (!Snd.ctx || save.mute || Snd.ctx.state !== 'running') return;
+    if (!this.bus) { this.bus = Snd.ctx.createGain(); this.bus.gain.value = .0001; this.bus.connect(Snd.ctx.destination); }
+    if (this.track !== name) {
+      const switching = this.playing && this.track;
+      this.track = name; this.step = 0; this.next = Snd.ctx.currentTime + (switching ? .35 : .1);
+      if (switching) { this.fade(.0001, .3); later0(() => this.fade(MTRACKS[name].vol, .8), 320); return; }
+    }
+    this.fade(MTRACKS[name].vol, .9);
+    if (!this.playing) { this.playing = true; this.next = Math.max(this.next, Snd.ctx.currentTime + .1); this.timer = setInterval(() => this.tick(), 30); }
+  },
+  resume() { if (this.want && !this.playing) this.play(this.want); },
+  duck(k) { if (this.playing) this.fade(MTRACKS[this.track].vol * k, .5); },
+  stop() {
+    if (!this.playing) return;
+    clearInterval(this.timer); this.playing = false; this.track = null;
+    this.fade(.0001, .25);
+  },
+  fade(to, sec) {
+    const g = this.bus.gain, t = Snd.ctx.currentTime;
+    g.cancelScheduledValues(t); g.setValueAtTime(Math.max(.0001, g.value), t); g.linearRampToValueAtTime(Math.max(.0001, to), t + sec);
+  },
+  tick() {
+    const c = Snd.ctx;
+    if (!c || c.state !== 'running' || !this.track) return;
+    const tr = MTRACKS[this.track], e = 60 / tr.bpm / 2;
+    if (this.next < c.currentTime - .25) this.next = c.currentTime + .05; // resync after the tab slept
+    while (this.next < c.currentTime + .16) {
+      tr.play(this.step, this.next, e);
+      this.next += e; this.step = (this.step + 1) % tr.len;
+    }
+  },
+};
+const later0 = (fn, ms) => setTimeout(fn, ms);
+// def: bpm (quarter notes), spb (eighth-note steps per bar), bars (chord names),
+// lead (one entry per step: MIDI note, -1 = hold previous note, 0 = rest), inst, acc(accompaniment per step)
+function song(def) {
+  const spb = def.spb || 8, chords = def.bars.map(chordOf), L = def.lead || [], lead = [];
+  for (let i = 0; i < L.length; i++) if (L[i] > 0) { let n = 1; while (L[i + n] === -1) n++; lead[i] = [L[i], n]; }
+  return {
+    bpm: def.bpm, vol: def.vol, len: def.bars.length * spb,
+    play(s, t, e) {
+      const ch = chords[(s / spb) | 0], i = s % spb;
+      const tt = def.swing && (i & 1) ? t + e * def.swing : t;
+      def.acc(Music, ch, i, tt, e);
+      const ld = lead[s];
+      if (ld) def.inst(Music, tt, ld[0], ld[1] * e * (def.legato || .95), def.leadVol);
+    },
+  };
+}
+const MTRACKS = {
+  // music box for title, map and hero screens
+  menu: song({ bpm: 88, vol: .5, bars: ['C', 'Am', 'F', 'G', 'F', 'G', 'C', 'G'],
+    acc(M, ch, i, t, e) {
+      const n = ch.notes, arp = [n[0], n[1], n[2], n[0] + 12, n[2], n[1], n[0], n[1]];
+      M.bell(t, arp[i] + 12, e * 2.2, .055);
+      if (i === 0) { n.forEach(x => M.pad(t, x, e * 8.5, .03)); M.bass(t, ch.root, e * 6, .15); }
+      if (i === 4) M.bass(t, ch.root + 7, e * 3, .09);
+    } }),
+  // 战士 · 姜饼骑士进行曲: heroic march, brass + strings + timpani
+  warrior: song({ bpm: 100, vol: .42, bars: ['Dm', 'Bb', 'F', 'C', 'Dm', 'Bb', 'Gm', 'A'], leadVol: .13,
+    lead: [62, -1, -1, 65, 69, -1, 74, -1, 72, -1, 70, -1, 69, -1, 65, -1, 65, -1, 69, 72, 77, -1, -1, -1, 76, -1, 74, 72, 72, -1, -1, 0,
+      74, -1, -1, 72, 70, -1, 69, -1, 70, -1, 74, -1, 77, -1, 74, -1, 74, -1, 72, 70, 69, -1, 67, -1, 69, -1, -1, -1, 73, -1, 76, -1],
+    inst: (M, t, m, d, v) => M.brass(t, m, d, v),
+    acc(M, ch, i, t, e) {
+      if (i === 0) ch.notes.forEach(n => M.strings(t, n, e * 8, .05));
+      if (i === 0 || i === 4) { M.bass(t, ch.root, e * 3, .26); M.timp(t, .26, mtof(ch.root + 12)); }
+      if (i === 2 || i === 6) M.snare(t, .07);
+      if (i === 7) M.snare(t, .035);
+    } }),
+  // 法师 · 星夜书斋圆舞曲: mysterious waltz, flute + harp + celesta
+  mage: song({ bpm: 150, spb: 6, vol: .46, bars: ['Am', 'F', 'C', 'G', 'F', 'Dm', 'E', 'E'], leadVol: .12,
+    lead: [76, -1, -1, 72, -1, 69, 72, -1, -1, 77, -1, 76, 79, -1, -1, 76, -1, 72, 74, -1, -1, -1, 71, 74,
+      77, -1, -1, 76, 74, 72, 74, -1, 72, -1, 69, -1, 71, -1, -1, 68, -1, 71, 76, -1, -1, -1, -1, 0],
+    inst: (M, t, m, d, v) => { M.flute(t, m, d, v); M.bell(t, m + 12, d * .6, v * .22); },
+    acc(M, ch, i, t, e) {
+      const n = ch.notes, arp = [n[0], n[2], n[0] + 12, n[1] + 12, n[0] + 12, n[2]];
+      M.harp(t, arp[i], e * 3, .045);
+      if (i === 0) { M.bass(t, ch.root, e * 5.5, .18); n.forEach(x => M.pad(t, x, e * 6, .02)); }
+      if (i === 0 || i === 3) M.shaker(t, .012);
+    } }),
+  // 盗贼 · 暗影小步: sly swing, clarinet + walking pizzicato bass + snaps
+  rogue: song({ bpm: 112, swing: .33, legato: .7, vol: .44, bars: ['Em', 'Em', 'Am', 'B7', 'Em', 'C', 'Am', 'B7'], leadVol: .1,
+    lead: [64, 0, 67, 0, 71, 70, 69, 0, 67, 0, 64, 0, 0, 0, 59, 0, 69, 0, 72, 0, 76, 75, 74, 0, 71, -1, -1, 0, 66, 0, 63, 0,
+      64, 0, 67, 71, 76, -1, 74, 0, 72, 0, 76, 0, 79, -1, 77, 76, 74, 0, 72, 0, 69, 0, 66, 0, 63, 0, 66, 0, 71, -1, -1, 0],
+    inst: (M, t, m, d, v) => M.clarinet(t, m, d, v),
+    acc(M, ch, i, t, e) {
+      if (!(i & 1)) M.pizz(t, ch.root + [0, 7, 12, 10][i >> 1], e * 1.6, .3);
+      if (i === 3) ch.notes.forEach(n => M.pluck(t, n, e * .8, .025));
+      if (i === 2 || i === 6) M.snap(t, .06);
+      if (i & 1) M.hat(t, .02);
+      if (i === 0) M.kick(t, .16);
+    } }),
+  // 牧师 · 蜂蜜圣歌: serene hymn, choir voice + organ + harp
+  priest: song({ bpm: 72, vol: .85, bars: ['F', 'C', 'Dm', 'Bb', 'F', 'Gm', 'Bb', 'C'], leadVol: .15,
+    lead: [69, -1, -1, -1, 72, -1, -1, -1, 72, -1, 70, -1, 69, -1, 67, -1, 69, -1, -1, -1, 65, -1, -1, -1, 70, -1, 69, -1, 67, -1, 65, -1,
+      65, -1, 69, -1, 72, -1, -1, -1, 74, -1, 72, -1, 70, -1, -1, -1, 70, -1, 72, -1, 74, -1, 77, -1, 76, -1, -1, -1, 72, -1, -1, 0],
+    inst: (M, t, m, d, v) => M.voice(t, m, d, v),
+    acc(M, ch, i, t, e) {
+      const n = ch.notes;
+      if (i === 0) { n.forEach(x => M.organ(t, x, e * 8, .04)); M.organ(t, ch.root + 12, e * 8, .05); M.bell(t, n[0] + 24, e * 4, .025); }
+      if (!(i & 1)) M.harp(t, [n[0], n[1], n[2], n[0] + 12][i >> 1] + 12, e * 3, .04);
+    } }),
+  // 弓箭手 · 薄荷林间谣: adventurous 6/8 folk jig, flute + strummed chords + frame drum
+  archer: song({ bpm: 105, spb: 6, vol: .44, bars: ['G', 'Em', 'C', 'D', 'G', 'Em', 'Am', 'D'], leadVol: .12,
+    lead: [67, -1, 71, 74, -1, 76, 74, -1, 71, 67, -1, -1, 72, -1, 76, 79, -1, 76, 74, -1, -1, 69, -1, 66,
+      67, 71, 74, 79, -1, 78, 76, -1, 74, 71, -1, -1, 72, -1, 71, 69, -1, 72, 74, -1, -1, 66, -1, -1],
+    inst: (M, t, m, d, v) => M.flute(t, m, d, v),
+    acc(M, ch, i, t, e) {
+      if (i === 0 || i === 3) {
+        ch.notes.forEach((n, k) => M.pluck(t + k * .018, n, e * 2.6, .04));
+        M.bass(t, ch.root + (i ? 7 : 0), e * 2.5, .22);
+        M.tom(t, i ? .13 : .22, i ? 160 : 110);
+      }
+      M.shaker(t, i === 0 || i === 3 ? .02 : .01);
+    } }),
+  // 召唤师 · 软糖游行: playful parade, glockenspiel + bassoon + oom-pah pizzicato + woodblock
+  summoner: song({ bpm: 124, legato: .8, vol: .44, bars: ['C', 'F', 'G', 'C', 'Am', 'F', 'D7', 'G'], leadVol: .09,
+    lead: [72, 76, 79, 0, 79, 81, 79, 0, 77, 0, 76, 0, 74, 0, 72, 0, 71, 74, 79, 0, 77, 76, 74, 0, 76, 0, 72, 0, 67, 0, 0, 0,
+      69, 72, 76, 0, 76, 77, 76, 0, 74, 0, 72, 0, 69, 0, 65, 0, 66, 69, 72, 0, 74, 0, 78, 0, 79, 0, 74, 0, 71, 0, 67, 0],
+    inst: (M, t, m, d, v) => { M.glock(t, m, d, v); M.bassoon(t, m - 24, d * .8, v * .55); },
+    acc(M, ch, i, t, e) {
+      if (i === 0 || i === 4) M.pizz(t, ch.root + (i ? 7 : 0), e * 1.5, .3);
+      if (i === 2 || i === 6) { ch.notes.forEach(n => M.pizz(t, n, e * .8, .05)); M.wood(t, .06, 1200); }
+      if (i === 7) M.wood(t, .035, 900);
+      if (i === 0) M.kick(t, .18);
+    } }),
+};
 const Voice = {
   v: null,
   pick() {
@@ -1546,6 +1781,7 @@ async function win() {
   save.unlocked = Math.max(save.unlocked, Math.min(LEVELS.length, n + 1));
   save.run = null; persist();
   state = 'over';
+  Music.duck(.3);
   Snd.win();
   showWin(stars, newBest, coins);
 }
@@ -1554,6 +1790,7 @@ async function lose() {
   clearRun(); hideToast(); updateHUD();
   save.coins += 10; persist();
   await wait(500);
+  Music.duck(.3);
   Snd.lose();
   showLose(10);
 }
@@ -2350,7 +2587,12 @@ function soundSVG() {
     : '<svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z" fill="#fff"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round"/></svg>';
 }
 function refreshSound() { $('bSound').innerHTML = soundSVG(); $('mapSound').innerHTML = soundSVG(); }
-function toggleSound() { save.mute = !save.mute; persist(); refreshSound(); if (save.mute) Voice.stop(); Snd.init(); Snd.click(); }
+function toggleSound() {
+  save.mute = !save.mute; persist(); refreshSound();
+  if (save.mute) { Voice.stop(); Music.stop(); }
+  Snd.init(); Snd.click();
+  if (!save.mute) Music.play(musicForScreen());
+}
 
 /* ================= modals ================= */
 function modal(html, actions, cls) {
@@ -2387,7 +2629,7 @@ function heroInfoHTML(id) {
 function chooseHero(id) {
   if (!HERO[id]) return;
   save.hero = id; persist();
-  if (G && state === 'intro') { G.hero = makeHero(id); buildHeroBtn(); }
+  if (G && state === 'intro') { G.hero = makeHero(id); buildHeroBtn(); Music.play(id); }
 }
 function showIntro() {
   const L = G.L;
@@ -2501,7 +2743,7 @@ function openHeroes(from) {
 function closeHeroes() {
   closeModal();
   if (heroFrom === 'intro' && G && state === 'intro') {
-    showScreen('game'); G.hero = makeHero(save.hero); buildHeroBtn(); layout(true); showIntro();
+    showScreen('game'); G.hero = makeHero(save.hero); buildHeroBtn(); layout(true); Music.play(musicForScreen()); showIntro();
   } else if (heroFrom === 'retry' && G) startLevel(G.i);
   else goMap();
 }
@@ -2530,14 +2772,15 @@ function skillHTML(H, which) {
 }
 function heroDetail(id, noAnim) {
   const H = HERO[id], sel = save.hero === id;
+  Music.play(id);
   modal(`<h2 style="background:linear-gradient(180deg,${H.light},${H.color});text-shadow:0 3px 0 ${H.dark}">${H.name}</h2>
-    <div class="hd-head"><img src="${heroImg(id)}" alt=""><div><div class="hc">${clsLabel(H)}</div><div class="ht">${H.trait}</div></div></div>
+    <div class="hd-head"><img src="${heroImg(id)}" alt=""><div><div class="hc">${clsLabel(H)}</div><div class="ht">${H.trait}</div><div class="hd-theme">&#9835; ${_t('theme.' + id)}</div></div></div>
     ${skillHTML(H, 'a')}${skillHTML(H, 'p')}
     <div class="row">${sel ? `<button class="btn small" disabled>${_t('selectedCheck')}</button>` : `<button class="btn small" data-a="pick">${_t('sendHero')}</button>`}<button class="btn small blue" data-a="close">${_t('close')}</button></div>
     <div class="hd-cost" style="margin-top:8px">${_t('youHave', fmt(save.coins))}</div>`, {
     upa: () => upgrade(id, 'a'), upp: () => upgrade(id, 'p'),
     pick: () => { chooseHero(id); renderHeroes(); heroDetail(id, true); },
-    close: () => closeModal(),
+    close: () => { closeModal(); Music.play(musicForScreen()); },
   }, 'wide');
   if (noAnim) { const card = $('modal').querySelector('.card'); if (card) card.style.animation = 'none'; }
 }
@@ -2596,10 +2839,12 @@ function openLevel(i) {
 }
 
 /* ================= screens: title & map ================= */
+function musicForScreen() { return screen === 'game' && G && G.hero ? G.hero.id : 'menu'; }
 function showScreen(name) {
   ['title', 'map', 'game', 'heroScreen'].forEach(s => $(s).classList.toggle('hidden', s !== name));
   if (screen !== name) { const el = $(name); el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter'); }
   screen = name;
+  Music.play(musicForScreen());
 }
 function goMap() {
   closeModal(); hideToast();
@@ -2743,7 +2988,7 @@ function init() {
   document.addEventListener('touchmove', e => { if (screen === 'game') e.preventDefault(); }, { passive: false });
   document.addEventListener('gesturestart', e => e.preventDefault());
   document.addEventListener('dblclick', e => e.preventDefault());
-  ['pointerdown', 'touchend', 'keydown'].forEach(ev => document.addEventListener(ev, () => Snd.init(), { passive: true }));
+  ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown'].forEach(ev => document.addEventListener(ev, () => Snd.init(), { passive: true }));
   $('playBtn').addEventListener('click', () => {
     Snd.init(); Snd.click(); goMap();
     if (!save.seenHelp) showHelp();
@@ -2770,7 +3015,11 @@ function init() {
     rt = setTimeout(() => { if (screen === 'game') layout(); else if (screen === 'map') buildMap(); }, 80);
   });
   const persistNow = () => { if (screen === 'game') saveRun(); };
-  document.addEventListener('visibilitychange', () => { if (document.hidden) persistNow(); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) persistNow();
+    // pause all audio (music keeps no clock running) while the app is in the background
+    if (Snd.ctx) { if (document.hidden) Snd.ctx.suspend().catch(() => {}); else Snd.ctx.resume().then(() => Music.resume(), () => {}); }
+  });
   window.addEventListener('pagehide', persistNow);
   refreshSound(); buildTitle(); buildBgFx(); showScreen('title');
   requestAnimationFrame(frame);
@@ -2783,6 +3032,7 @@ window.SweetSaga = {
   swap: (a, b) => trySwap(a, b), dropIn: () => { closeModal(); return dropIn(); },
   chooseHero, cast: p => castHero(p), fill: () => { if (G && G.hero) { G.hero.charge = G.hero.cost; updateHUD(); } },
   findGroups, pickAreas, HP, get jelly() { return jelly; }, noHero: () => { if (G) { G.hero = null; buildHeroBtn(); } },
+  audio: { get state() { return { ctx: Snd.ctx && Snd.ctx.state, track: Music.track, playing: Music.playing, want: Music.want, gain: Music.bus && +Music.bus.gain.value.toFixed(3) }; }, ctx: () => Snd.ctx, bus: () => Music.bus, play: n => Music.play(n) },
 };
 init();
 })();

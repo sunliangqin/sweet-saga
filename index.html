@@ -179,7 +179,7 @@ button{font-family:inherit;-webkit-appearance:none;appearance:none}
 .hero .ring .fg{fill:none;stroke:var(--hc);stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset .35s}
 .hero.ready .ring .fg{stroke:#ffe14d}
 .hero.ready{animation:heroReady .55s ease-in-out infinite alternate}
-.hero.ready img{box-shadow:0 0 0 3px #fff,0 0 16px 6px var(--ha,#ffe14d)}
+.hero.ready img{box-shadow:0 0 0 3px #fff,0 3px 6px rgba(0,0,0,.35)}
 .hero.aim{animation:pulse .45s infinite alternate}
 .hero.aim img{box-shadow:0 0 0 3px #fff,0 0 18px 8px #ff4fa8}
 .hero .hlv{position:absolute;left:-4px;bottom:-3px;background:var(--hc);border:2px solid #fff;border-radius:999px;font-size:11px;font-weight:900;padding:1px 5px;color:#fff;line-height:15px}
@@ -2253,11 +2253,6 @@ const Aura = {
   },
   part(p) { if (this.ps.length < 170) { p.life = 0; this.ps.push(p); } },
   emit(rate, dt, fn) { let n = rate * dt; for (; n >= 1; n--) fn(); if (Math.random() < n) fn(); },
-  glowRing(g, rgb, a, r0, r1) {
-    const gr = g.createRadialGradient(this.cx, this.cy, r0, this.cx, this.cy, r1);
-    gr.addColorStop(0, `rgba(${rgb},${a})`); gr.addColorStop(1, `rgba(${rgb},0)`);
-    g.fillStyle = gr; g.beginPath(); g.arc(this.cx, this.cy, r1, 0, Math.PI * 2); g.fill();
-  },
   // comet-like arc: bright head at angle a, fading tail behind it
   trail(g, r, a, len, rgb, w, n) {
     for (let j = 0; j < n; j++) {
@@ -2312,8 +2307,6 @@ const Aura = {
   FX: {
     mage(A, g, t, dt, k) {
       const { cx, cy, R } = A;
-      A.glowRing(g, '255,120,30', .75 * (.85 + .15 * Math.sin(t * 9)), R * .9, R * 1.9);
-      A.glowRing(g, '170,60,255', .3, R * 1.2, R * 2.4);
       if (A.want) {
         A.emit(95, dt, () => {
           const a = Math.random() * Math.PI * 2, r = R * (.88 + Math.random() * .14);
@@ -2332,8 +2325,6 @@ const Aura = {
     },
     warrior(A, g, t, dt, k) {
       const { cx, cy, R } = A;
-      A.glowRing(g, '255,170,40', .7 * (.85 + .15 * Math.sin(t * 7)), R * .9, R * 1.8);
-      A.glowRing(g, '255,40,40', .35, R * 1.1, R * 2.3);
       for (let i = 0; i < 2; i++) {
         const p = (t * 1.1 + i * .5) % 1;
         g.lineWidth = 5 * k * (1 - p); g.strokeStyle = `rgba(255,${200 - p * 130 | 0},60,${(1 - p) * .9})`;
@@ -2353,7 +2344,6 @@ const Aura = {
     },
     rogue(A, g, t, dt, k) {
       const { R } = A;
-      A.glowRing(g, '40,255,130', .45 * (.8 + .2 * Math.sin(t * 5)), R * .9, R * 1.75);
       if (A.want) {
         A.emit(28, dt, () => A.part({ kind: 'smoke', solid: 1, orb: { a: Math.random() * Math.PI * 2, r: R * (1 + Math.random() * .2), w: 2.4 + Math.random(), dr: 18 * k }, max: 1.1, size: (15 + Math.random() * 10) * k, grow: .9, fadeIn: 1, color: 'rgba(10,45,25,.6)' }));
         A.emit(22, dt, () => A.part({ kind: 'star', orb: { a: Math.random() * Math.PI * 2, r: R * 1.15, w: 3, dr: 30 * k }, max: .7, size: (3 + Math.random() * 2) * k, color: '#b8ffd0' }));
@@ -2362,7 +2352,6 @@ const Aura = {
     },
     priest(A, g, t, dt, k) {
       const { cx, cy, R } = A;
-      A.glowRing(g, '255,230,140', .7 * (.85 + .15 * Math.sin(t * 4)), R * .9, R * 1.9);
       for (let i = 0; i < 12; i++) {
         const a = t * .6 + i * Math.PI / 6, L = R * (i % 2 ? 1.9 : 2.45), w = .1, r0 = R * .9;
         const gr = g.createLinearGradient(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0, cx + Math.cos(a) * L, cy + Math.sin(a) * L);
@@ -2382,7 +2371,6 @@ const Aura = {
     },
     archer(A, g, t, dt, k) {
       const { R } = A;
-      A.glowRing(g, '60,240,180', .65 * (.85 + .15 * Math.sin(t * 6)), R * .9, R * 1.85);
       for (const [rr, w, ph] of [[1.15, 6, 0], [1.38, 4.6, 2.1], [1.62, 5.4, 4.2]]) {
         A.trail(g, R * rr, t * w + ph, 1.4, '20,170,120', 7 * k, 10);
         A.trail(g, R * rr, t * w + ph, 1.4, '150,255,220', 3.2 * k, 14);
@@ -2391,8 +2379,6 @@ const Aura = {
     },
     summoner(A, g, t, dt, k) {
       const { cx, cy, R } = A, r = R * 1.5, rot = t * .9;
-      A.glowRing(g, '120,255,230', .45, R * .9, R * 1.8);
-      A.glowRing(g, '255,120,220', .28, R * 1.3, R * 2.3);
       g.strokeStyle = 'rgba(140,255,235,.85)'; g.lineWidth = 1.8 * k;
       for (const q of [1, .86]) { g.beginPath(); g.arc(cx, cy, r * q, 0, Math.PI * 2); g.stroke(); }
       g.beginPath();
@@ -3012,7 +2998,7 @@ function buildHeroBtn() {
   const slot = $('heroSlot');
   if (!G || !G.hero) { slot.innerHTML = ''; Aura.attach(null); return; }
   const H = HERO[G.hero.id];
-  slot.innerHTML = `<button class="hero" id="heroBtn" style="--hc:${H.color};--ha:${Aura.COL[H.id]}" title="${H.cls}${H.name}：${H.active.name}" aria-label="${H.name}：${H.active.name}">
+  slot.innerHTML = `<button class="hero" id="heroBtn" style="--hc:${H.color}" title="${H.cls}${H.name}：${H.active.name}" aria-label="${H.name}：${H.active.name}">
     <canvas class="aura"></canvas>
     <svg class="ring" viewBox="0 0 64 64"><circle class="bgc" cx="32" cy="32" r="29"/><circle class="fg" id="heroRing" cx="32" cy="32" r="29" stroke-dasharray="${RING}" stroke-dashoffset="${RING}"/></svg>
     <img src="${heroImg(H.id)}" alt=""><span class="hlv">Lv${heroLv(H.id).a}</span><span class="tap">${_t('tap')}</span><span class="pet hidden" id="heroPet"></span></button>`;

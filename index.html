@@ -147,6 +147,22 @@ button{font-family:inherit;-webkit-appearance:none;appearance:none}
 .card .els{margin:6px auto 2px;max-width:340px;text-align:left}
 .card .el{display:flex;align-items:center;gap:8px;font-size:13px;line-height:1.35;margin:5px 0;background:rgba(255,255,255,.55);border-radius:12px;padding:4px 8px}
 .card .el img{width:36px;height:36px;flex:0 0 auto}
+.set-row{background:rgba(255,255,255,.62);border-radius:16px;padding:10px 14px 12px;margin:10px 0;text-align:left}
+.set-head{display:flex;align-items:center;gap:10px;font-size:17px}
+.set-head b{flex:1}
+.set-ic{width:28px;height:28px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#ff4fa8;color:#fff;font-size:17px;font-weight:900}
+.set-ic svg{width:18px;height:18px}
+.sw{position:relative;width:58px;height:32px;border-radius:999px;border:0;padding:0;background:#cdb8da;cursor:pointer;transition:background .2s;flex:0 0 auto;touch-action:manipulation}
+.sw i{position:absolute;left:3px;top:3px;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.28);transition:transform .2s}
+.sw.on{background:linear-gradient(180deg,#86e870,#2fb34a)}
+.sw.on i{transform:translateX(26px)}
+.vol-line{display:flex;align-items:center;gap:10px;margin-top:10px}
+.vol{flex:1;min-width:0;-webkit-appearance:none;appearance:none;height:10px;border-radius:999px;outline:none;margin:10px 0;cursor:pointer;
+ background:linear-gradient(90deg,#ff5fae var(--p,100%),#ead7f2 var(--p,100%))}
+.vol::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:30px;height:30px;border-radius:50%;background:#fff;border:3px solid #ff4fa8;box-shadow:0 2px 5px rgba(0,0,0,.28)}
+.vol::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:#fff;border:3px solid #ff4fa8;box-shadow:0 2px 5px rgba(0,0,0,.28)}
+.vol:disabled{opacity:.4;cursor:default}
+.vol-v{width:48px;text-align:right;font-weight:900;color:#a0306e}
 .card .mv{font-size:18px;margin-top:6px}
 .card .mv b{font-size:26px;color:#e0338a}
 .card .targets{font-size:14px;opacity:.85;margin-top:6px}
@@ -315,6 +331,7 @@ button{font-family:inherit;-webkit-appearance:none;appearance:none}
   <div class="tag">甜蜜的三消冒险</div>
   <button class="btn big" id="playBtn">开始</button>
   <button class="btn small blue" id="helpBtn">玩法说明</button>
+  <button class="btn small pink" id="setBtn">设置</button>
   <div class="foot">无广告 · 无内购 · 进度保存在本设备</div>
 </div>
 
@@ -325,7 +342,7 @@ button{font-family:inherit;-webkit-appearance:none;appearance:none}
     <div class="mt-title">甜蜜传奇</div>
     <div class="mt-stars"><span>&#9733;</span> <b id="totalStars">0</b></div>
     <div class="mt-candy" title="糖果罐"><i class="candyc"></i> <b class="candyCount">0</b></div>
-    <button class="rb small" id="mapSound" title="声音" aria-label="声音"></button>
+    <button class="rb small" id="mapSound" title="设置" aria-label="设置"></button>
   </div>
   <button class="btn pink" id="mapHeroes"><img id="mapHeroImg" alt="">英雄</button>
 </div>
@@ -355,7 +372,7 @@ button{font-family:inherit;-webkit-appearance:none;appearance:none}
     <button class="rb" id="bHammer" title="棒棒糖锤子：砸碎一颗糖果" aria-label="棒棒糖锤子"><svg viewBox="0 0 24 24"><path d="M11.5 12.5 4 21" stroke="#fff" stroke-width="2.8" stroke-linecap="round"/><circle cx="15" cy="9" r="6.6" fill="#fff"/><path d="M15 9m-1.2 0a1.2 1.2 0 1 1 2.4 0a2.4 2.4 0 1 1-4.8 0a3.6 3.6 0 1 1 7.2 0" fill="none" stroke="#e0338a" stroke-width="1.5" stroke-linecap="round"/></svg><span class="cnt" id="cHammer">3</span></button>
     <div id="heroSlot"></div>
     <button class="rb" id="bShuffle" title="重新打乱棋盘" aria-label="洗牌"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h3c5 0 7 10 12 10h3"/><path d="M3 17h3c5 0 7-10 12-10h3"/><path d="M18 4l3 3-3 3"/><path d="M18 14l3 3-3 3"/></svg><span class="cnt" id="cShuffle">2</span></button>
-    <button class="rb blue" id="bSound" title="声音" aria-label="声音"></button>
+    <button class="rb blue" id="bSound" title="设置" aria-label="设置"></button>
   </div>
   <div id="words"></div>
   <canvas id="heroFx"></canvas>
@@ -602,6 +619,7 @@ const STR = {
   'el.choco': '<b>巧克力</b>：在旁边消除就能吃掉它；如果一步都没碰到巧克力，它就会蔓延！',
   'el.bomb': '<b>糖果炸弹</b>：每走一步数字减一，归零前一定要消除它！',
   bombOut: '糖果炸弹爆炸了！', 'why.bomb': '有一颗糖果炸弹的倒计时归零了。下次记得优先消除它！',
+  settings: '设置', 'set.music': '背景音乐', 'set.sfx': '音效与英雄口号', 'set.volume': '音量', 'set.done': '完成',
   'w.sweet': '甜蜜！', 'w.tasty': '美味！', 'w.delicious': '可口！', 'w.divine': '神级！', 'w.sugar': '糖果狂欢！',
   'w.shuffle': '洗牌！', 'w.welcome': '欢迎回来！', 'w.lastStand': '背水一战！', 'w.skill': n => n + '！',
   'pop.crit': '暴击！', 'pop.sneak': '偷袭！', 'pop.moves': n => `+${n} 步`,
@@ -703,7 +721,7 @@ const clsLabel = H => H.cls;
 
 /* ================= local save (localStorage) ================= */
 const SAVE_KEY = 'sweetSaga.save.v1';
-const defaultSave = () => ({ unlocked: 1, stars: {}, best: {}, mute: false, seenHelp: false, run: null, candy: 0, hero: 'warrior', heroLv: {}, seenHeroes: false });
+const defaultSave = () => ({ unlocked: 1, stars: {}, best: {}, music: { on: true, vol: 1 }, sfx: { on: true, vol: 1 }, seenHelp: false, run: null, candy: 0, hero: 'warrior', heroLv: {}, seenHeroes: false });
 let save = loadSave();
 function heroLv(id) {
   let l = save.heroLv[id];
@@ -717,6 +735,12 @@ HERO_LIST.forEach(h => heroLv(h.id));
 // The old coin currency is gone: coins left in older saves become candies at the upgrade-price ratio.
 if ('coins' in save) { save.candy = (save.candy | 0) + Math.round(Math.max(0, save.coins | 0) * COIN_TO_CANDY); delete save.coins; }
 save.candy = Math.max(0, save.candy | 0);
+// sound settings: music and effects each have an on/off switch and a 0..1 volume (older saves had one mute flag)
+for (const k of ['music', 'sfx']) {
+  const v = save[k] && typeof save[k] === 'object' ? save[k] : {};
+  save[k] = { on: save.mute ? false : v.on !== false, vol: typeof v.vol === 'number' && isFinite(v.vol) ? Math.max(0, Math.min(1, v.vol)) : 1 };
+}
+delete save.mute;
 // saves from before new levels were added stopped unlocking at the old last level
 {
   const cleared = Object.keys(save.stars || {}).filter(k => save.stars[k] > 0).map(Number).filter(n => n > 0);
@@ -740,7 +764,7 @@ const Snd = {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
       try { this.ctx = new AC(); } catch (e) { return; }
-      this.out = this.ctx.createGain(); this.out.gain.value = .45; this.out.connect(this.ctx.destination);
+      this.out = this.ctx.createGain(); this.out.gain.value = .45 * save.sfx.vol; this.out.connect(this.ctx.destination);
       const len = this.ctx.sampleRate * .6;
       this.nb = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
       const d = this.nb.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
@@ -772,7 +796,8 @@ const Snd = {
     const p = el.play(); if (p && p.catch) p.catch(() => {});
     this.silentEl = el;
   },
-  ok() { return this.ctx && !save.mute && this.ctx.state === 'running'; },
+  ok() { return this.ctx && save.sfx.on && save.sfx.vol > 0 && this.ctx.state === 'running'; },
+  setVolume() { if (this.out) this.out.gain.setTargetAtTime(.45 * save.sfx.vol, this.ctx.currentTime, .03); },
   tone(f, dur, o) {
     if (!this.ok()) return;
     o = o || {};
@@ -921,22 +946,30 @@ const Music = {
   snap(t, v) { this.noiseHit(t, v, 2600, .05, 'bandpass'); },
   wood(t, v, f) { this.osc(t, 'sine', f, .06, v, .001); this.noiseHit(t, v * .4, f * 1.5, .03, 'bandpass'); },
   /* ---- player ---- */
-  // name: 'menu' or a hero id. Remembered until audio is allowed (first tap) or while muted.
+  // name: 'menu' or a hero id. Remembered until audio is allowed (first tap) or while music is off.
   play(name) {
     if (!MTRACKS[name]) name = 'menu';
     this.want = name;
-    if (!Snd.ctx || save.mute || Snd.ctx.state !== 'running') return;
+    if (!Snd.ctx || !this.audible() || Snd.ctx.state !== 'running') return;
     if (!this.bus) { this.bus = Snd.ctx.createGain(); this.bus.gain.value = .0001; this.bus.connect(Snd.ctx.destination); }
     if (this.track !== name) {
       const switching = this.playing && this.track;
       this.track = name; this.step = 0; this.next = Snd.ctx.currentTime + (switching ? .35 : .1);
-      if (switching) { this.fade(.0001, .3); later0(() => this.fade(MTRACKS[name].vol, .8), 320); return; }
+      if (switching) { this.fade(.0001, .3); later0(() => { if (this.track === name) this.fade(this.vol(name), .8); }, 320); return; }
     }
-    this.fade(MTRACKS[name].vol, .9);
+    this.fade(this.vol(name), .9);
     if (!this.playing) { this.playing = true; this.next = Math.max(this.next, Snd.ctx.currentTime + .1); this.timer = setInterval(() => this.tick(), 30); }
   },
+  audible() { return save.music.on && save.music.vol > 0; },
+  vol(name) { return MTRACKS[name].vol * save.music.vol; },
+  // settings changed: start, stop or re-level the current track
+  apply() {
+    if (!this.audible()) { this.stop(); return; }
+    if (this.playing && this.track) this.fade(this.vol(this.track), .12);
+    else if (this.want) this.play(this.want);
+  },
   resume() { if (this.want && !this.playing) this.play(this.want); },
-  duck(k) { if (this.playing) this.fade(MTRACKS[this.track].vol * k, .5); },
+  duck(k) { if (this.playing) this.fade(this.vol(this.track) * k, .5); },
   stop() {
     if (!this.playing) return;
     clearInterval(this.timer); this.playing = false; this.track = null;
@@ -1060,14 +1093,14 @@ const Voice = {
     return vs.find(v => /^zh[-_](CN|Hans)/i.test(v.lang)) || vs.find(v => /^(zh|cmn)/i.test(v.lang)) || vs.find(v => /chinese|中文|普通话/i.test(v.name)) || null;
   },
   say(text, H) {
-    if (save.mute || SPEED > 5) return;
+    if (!save.sfx.on || save.sfx.vol <= 0 || SPEED > 5) return;
     if (!this.v) this.v = this.pick();
     const [pitch, rate, hz] = H.voice;
     if (this.v) {
       try {
         speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance(text.replace(/[…—]+/g, '，'));
-        u.voice = this.v; u.lang = this.v.lang; u.pitch = pitch; u.rate = rate; u.volume = 1;
+        u.voice = this.v; u.lang = this.v.lang; u.pitch = pitch; u.rate = rate; u.volume = save.sfx.vol;
         speechSynthesis.speak(u);
         return;
       } catch (e) { /* fall through to the synthesized shout */ }
@@ -3447,16 +3480,41 @@ function showToast(t, ms) {
 }
 function hideToast() { clearTimeout(toastTimer); $('toast').classList.add('hidden'); }
 function soundSVG() {
-  return save.mute
+  return !save.music.on && !save.sfx.on
     ? '<svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z" fill="#fff"/><path d="M16 9l5 6M21 9l-5 6" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>'
     : '<svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z" fill="#fff"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round"/></svg>';
 }
 function refreshSound() { $('bSound').innerHTML = soundSVG(); $('mapSound').innerHTML = soundSVG(); }
-function toggleSound() {
-  save.mute = !save.mute; persist(); refreshSound();
-  if (save.mute) { Voice.stop(); Music.stop(); }
+/* ================= settings: music & sound effect switches and volumes ================= */
+function openSettings() {
   Snd.init(); Snd.click();
-  if (!save.mute) Music.play(musicForScreen());
+  const row = (k, ic, label) => `<div class="set-row">
+      <div class="set-head"><span class="set-ic">${ic}</span><b>${_t(label)}</b>
+        <button class="sw ${save[k].on ? 'on' : ''}" data-sw="${k}" role="switch" aria-checked="${save[k].on}" aria-label="${_t(label)}"><i></i></button></div>
+      <div class="vol-line"><input type="range" class="vol" data-vol="${k}" min="0" max="100" step="5" value="${Math.round(save[k].vol * 100)}" aria-label="${_t(label)} ${_t('set.volume')}" ${save[k].on ? '' : 'disabled'}>
+        <span class="vol-v" id="vv-${k}">${Math.round(save[k].vol * 100)}%</span></div></div>`;
+  modal(`<h2>${_t('settings')}</h2>
+    ${row('music', '&#9835;', 'set.music')}
+    ${row('sfx', '<svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z" fill="#fff"/><path d="M16 8.5a5 5 0 0 1 0 7" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round"/></svg>', 'set.sfx')}
+    <div class="row"><button class="btn" data-a="done">${_t('set.done')}</button></div>`, {
+    done: () => closeModal(),
+  });
+  const m = $('modal'), paint = el => el.style.setProperty('--p', el.value + '%');
+  m.querySelectorAll('.vol').forEach(el => {
+    paint(el);
+    el.addEventListener('input', () => {
+      const k = el.dataset.vol; save[k].vol = el.value / 100; paint(el); $('vv-' + k).textContent = el.value + '%';
+      if (k === 'music') Music.apply(); else { Snd.setVolume(); Snd.play('click'); }
+    });
+    el.addEventListener('change', persist);
+  });
+  m.querySelectorAll('.sw').forEach(b => b.addEventListener('click', () => {
+    const k = b.dataset.sw, on = !save[k].on;
+    save[k].on = on; b.classList.toggle('on', on); b.setAttribute('aria-checked', on);
+    m.querySelector(`.vol[data-vol="${k}"]`).disabled = !on;
+    if (k === 'music') Music.apply(); else if (on) { Snd.setVolume(); Snd.click(); } else Voice.stop();
+    persist(); refreshSound();
+  }));
 }
 
 /* ================= modals ================= */
@@ -3865,7 +3923,8 @@ function init() {
   cv.addEventListener('pointerup', onUp);
   cv.addEventListener('pointercancel', onUp);
   cv.addEventListener('contextmenu', e => e.preventDefault());
-  document.addEventListener('touchmove', e => { if (screen === 'game') e.preventDefault(); }, { passive: false });
+  // block page scrolling while playing, but let volume sliders be dragged
+  document.addEventListener('touchmove', e => { if (screen === 'game' && !(e.target.closest && e.target.closest('.vol'))) e.preventDefault(); }, { passive: false });
   document.addEventListener('gesturestart', e => e.preventDefault());
   document.addEventListener('dblclick', e => e.preventDefault());
   ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown'].forEach(ev => document.addEventListener(ev, () => Snd.init(), { passive: true }));
@@ -3879,8 +3938,9 @@ function init() {
   $('mapHome').addEventListener('click', () => { Snd.click(); showScreen('title'); });
   $('mapHeroes').addEventListener('click', () => { Snd.init(); Snd.click(); openHeroes('map'); });
   $('heroBack').addEventListener('click', () => { Snd.click(); closeHeroes(); });
-  $('mapSound').addEventListener('click', toggleSound);
-  $('bSound').addEventListener('click', toggleSound);
+  $('mapSound').addEventListener('click', openSettings);
+  $('bSound').addEventListener('click', openSettings);
+  $('setBtn').addEventListener('click', openSettings);
   $('bMap').addEventListener('click', () => { Snd.click(); askQuit(); });
   $('bHammer').addEventListener('click', () => {
     if (state !== 'play' || busy || G.hammer <= 0) return;

@@ -144,6 +144,9 @@ button{font-family:inherit;-webkit-appearance:none;appearance:none}
 .card .goalicons{display:flex;justify-content:center;gap:14px;margin:10px 0;flex-wrap:wrap}
 .card .goalicons div{display:flex;flex-direction:column;align-items:center;font-weight:900;font-size:18px}
 .card .goalicons img{width:46px;height:46px}
+.card .els{margin:6px auto 2px;max-width:340px;text-align:left}
+.card .el{display:flex;align-items:center;gap:8px;font-size:13px;line-height:1.35;margin:5px 0;background:rgba(255,255,255,.55);border-radius:12px;padding:4px 8px}
+.card .el img{width:36px;height:36px;flex:0 0 auto}
 .card .mv{font-size:18px;margin-top:6px}
 .card .mv b{font-size:26px;color:#e0338a}
 .card .targets{font-size:14px;opacity:.85;margin-top:6px}
@@ -393,8 +396,11 @@ function srand(seed) { let s = (seed % 2147483647) || 1; return () => (s = (s * 
 function shuffleArr(a) { for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; }
 
 /* ================= levels =================
-   '.' = no cell, 'x' = cell, 'j' = jelly, 'J' = double jelly
+   shape: '.' = no cell, 'x' = cell, 'j' = jelly, 'J' = double jelly
+   obs (optional overlay): '1'-'3' = frosting with that many layers, 'c' = chocolate, 'l' = licorice-locked candy
+   bombs (optional): { start: on the board at the beginning, t: countdown, max: on the board at once, p: chance per refilled candy }
    goal types: score | jelly | order | ingredients                     */
+const FULL = Array(9).fill('xxxxxxxxx');
 const LEVELS = [
   { moves: 18, colors: 5, goal: { type: 'score' }, stars: [4500, 8000, 12000], shape: [
     '.........', '.xxxxxxx.', '.xxxxxxx.', '.xxxxxxx.', '.xxxxxxx.', '.xxxxxxx.', '.xxxxxxx.', '.xxxxxxx.', '.........'] },
@@ -428,7 +434,7 @@ const LEVELS = [
     '.xxx.xxx.', 'xJJJxJJJx', 'xJJjjjJJx', 'xjjjjjjjx', '.xjjjjjx.', '..xjjjx..', '...xjx...', '....x....', '.........'] },
   { moves: 26, colors: 6, goal: { type: 'score' }, stars: [9000, 14000, 19000], shape: [
     '..xxxxx..', '..xxxxx..', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', '..xxxxx..', '..xxxxx..'] },
-  { moves: 19, colors: 5, goal: { type: 'order', items: [{ k: 'striped', n: 8 }, { k: 'wrapped', n: 5 }, { k: 'c1', n: 45 }] }, stars: [15000, 25000, 35000], shape: [
+  { moves: 20, colors: 5, goal: { type: 'order', items: [{ k: 'striped', n: 8 }, { k: 'wrapped', n: 5 }, { k: 'c1', n: 45 }] }, stars: [15000, 25000, 35000], shape: [
     'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx'] },
   { moves: 16, colors: 5, goal: { type: 'jelly' }, stars: [70000, 85000, 100000], shape: [
     'xxxxxxxxx', 'xJJJJJJJx', 'xJjjjjjJx', 'xJjJJJjJx', 'xJjJjJjJx', 'xJjJJJjJx', 'xJjjjjjJx', 'xJJJJJJJx', 'xxxxxxxxx'] },
@@ -436,10 +442,128 @@ const LEVELS = [
     'xxxxxxxxx', 'xxxxxxxxx', 'xxx.x.xxx', 'xxxxxxxxx', 'xx.xxx.xx', 'xxxxxxxxx', 'xxx.x.xxx', 'xxxxxxxxx', 'xxxxxxxxx'] },
   { moves: 25, colors: 5, goal: { type: 'jelly' }, stars: [100000, 120000, 140000], shape: [
     'jjjjjjjjj', 'jjjjjjjjj', 'jjJJJJJjj', 'jjJ...Jjj', 'jjJ...Jjj', 'jjJ...Jjj', 'jjJJJJJjj', 'jjjjjjjjj', 'jjjjjjjjj'] },
+  // ---- 糖霜雪原: frosting ----
+  { moves: 12, colors: 5, goal: { type: 'order', items: [{ k: 'frost', n: 14 }, { k: 'c3', n: 25 }] }, stars: [13000, 20000, 28000],
+    shape: ['.xxxxxxx.', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', '.xxxxxxx.'],
+    obs: ['.........', '.........', '.........', '1.1.1.1.1', '.1.1.1.1.', '1.1.1.1.1', '.........', '.........', '.........'] },
+  { moves: 13, colors: 5, goal: { type: 'jelly' }, stars: [50000, 60000, 70000],
+    shape: ['xxxxxxxxx', 'xjjjxjjjx', 'xjjjxjjjx', 'xjjjxjjjx', 'xxxxxxxxx', 'xjjjxjjjx', 'xjjjxjjjx', 'xjjjxjjjx', 'xxxxxxxxx'],
+    obs: ['.........', '.........', '....1....', '....1....', '1111.1111', '....1....', '....1....', '.........', '.........'] },
+  { moves: 16, colors: 5, goal: { type: 'ingredients', n: 3 }, stars: [50000, 60000, 70000], shape: FULL,
+    obs: ['.........', '.........', '.........', '11.111.11', '.........', '11.111.11', '.........', '.........', '.........'] },
+  { moves: 14, colors: 5, goal: { type: 'order', items: [{ k: 'frost', n: 18 }, { k: 'c2', n: 30 }] }, stars: [15000, 21000, 30000],
+    shape: ['..xxxxx..', '.xxxxxxx.', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', '.xxxxxxx.', '..xxxxx..'],
+    obs: ['..11111..', '.1.....1.', '1.......1', '.........', '.........', '.........', '1.......1', '.1.....1.', '..11111..'] },
+  { moves: 17, colors: 5, goal: { type: 'jelly' }, stars: [50000, 60000, 65000],
+    shape: ['jjjjjjjjj', 'jxxxxxxxj', 'jxxxxxxxj', 'jxxxxxxxj', 'jxxxxxxxj', 'jxxxxxxxj', 'jxxxxxxxj', 'jxxxxxxxj', 'jjjjjjjjj'],
+    obs: ['.........', '.........', '..11111..', '..1...1..', '..1...1..', '..1...1..', '..11111..', '.........', '.........'] },
+  // ---- 冰晶城堡: thicker frosting ----
+  { moves: 13, colors: 5, goal: { type: 'order', items: [{ k: 'frost', n: 12 }, { k: 'c1', n: 25 }] }, stars: [15000, 22000, 31000], shape: FULL,
+    obs: ['.........', '.2.2.2.2.', '.........', '.2.2.2.2.', '.........', '.2.2.2.2.', '.........', '.........', '.........'] },
+  { moves: 15, colors: 5, goal: { type: 'jelly' }, stars: [60000, 65000, 75000],
+    shape: ['xxxxxxxxx', 'xjjjjjjjx', 'xjjjjjjjx', 'xjjxxxjjx', 'xjjxxxjjx', 'xjjxxxjjx', 'xjjjjjjjx', 'xjjjjjjjx', 'xxxxxxxxx'],
+    obs: ['.........', '.........', '.........', '...222...', '...222...', '...222...', '.........', '.........', '.........'] },
+  { moves: 20, colors: 5, goal: { type: 'ingredients', n: 4 }, stars: [65000, 75000, 85000], shape: FULL,
+    obs: ['.........', '.........', '2.2.2.2.2', '.........', '1.1.1.1.1', '.........', '.2.2.2.2.', '.........', '.........'] },
+  { moves: 17, colors: 5, goal: { type: 'order', items: [{ k: 'frost', n: 5 }, { k: 'striped', n: 8 }] }, stars: [15000, 22000, 31000],
+    shape: ['.xxx.xxx.', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', '.xxxxxxx.', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', '.xxx.xxx.'],
+    obs: ['.........', '.........', '..3...3..', '.........', '....3....', '.........', '..3...3..', '.........', '.........'] },
+  { moves: 19, colors: 5, goal: { type: 'jelly' }, stars: [75000, 85000, 95000],
+    shape: ['jjjjjjjjj', 'jjjjjjjjj', 'jjxxxxxjj', 'jjxxxxxjj', 'jjxxxxxjj', 'jjxxxxxjj', 'jjxxxxxjj', 'jjjjjjjjj', 'jjjjjjjjj'],
+    obs: ['.........', '.........', '..3.3.3..', '.........', '..3.3.3..', '.........', '..3.3.3..', '.........', '.........'] },
+  // ---- 甘草峡谷: licorice locks ----
+  { moves: 15, colors: 5, goal: { type: 'jelly' }, stars: [49000, 60000, 65000],
+    shape: ['xxxxxxxxx', 'xxjjjjjxx', 'xxjjjjjxx', 'xxjjjjjxx', 'xxjjjjjxx', 'xxjjjjjxx', 'xxjjjjjxx', 'xxjjjjjxx', 'xxxxxxxxx'],
+    obs: ['.........', '.........', '..lllll..', '.........', '..lllll..', '.........', '..lllll..', '.........', '.........'] },
+  { moves: 13, colors: 5, goal: { type: 'order', items: [{ k: 'c0', n: 40 }, { k: 'c4', n: 40 }] }, stars: [18000, 24000, 32000], shape: FULL,
+    obs: ['.........', 'l.......l', '.l.....l.', '..l...l..', '...l.l...', '..l...l..', '.l.....l.', 'l.......l', '.........'] },
+  { moves: 16, colors: 5, goal: { type: 'ingredients', n: 3 }, stars: [49000, 55000, 70000], shape: FULL,
+    obs: ['.........', '.........', '.........', 'lll...lll', '.........', '...lll...', '.........', '.........', '.........'] },
+  { moves: 18, colors: 5, goal: { type: 'jelly' }, stars: [60000, 70000, 80000],
+    shape: ['..jjjjj..', '.jjjjjjj.', 'jjxxxxxjj', 'jjxxxxxjj', 'jjxxxxxjj', 'jjxxxxxjj', 'jjxxxxxjj', '.jjjjjjj.', '..jjjjj..'],
+    obs: ['..l...l..', '.l.....l.', '..1.1.1..', '.........', '..1.1.1..', '.........', '..1.1.1..', '.l.....l.', '..l...l..'] },
+  { moves: 18, colors: 5, goal: { type: 'order', items: [{ k: 'frost', n: 10 }, { k: 'wrapped', n: 4 }] }, stars: [26000, 34000, 45000], shape: FULL,
+    obs: ['1l1l1l1l1', '.........', '.........', 'l.l.l.l.l', '.........', '.........', '1l1l1l1l1', '.........', '.........'] },
+  // ---- 可可工厂: chocolate ----
+  { moves: 14, colors: 5, goal: { type: 'order', items: [{ k: 'choco', n: 15 }, { k: 'c4', n: 45 }] }, stars: [19000, 26000, 35000], shape: FULL,
+    obs: ['.........', '.........', '.........', '.........', '.........', '.........', '...ccc...', '..ccccc..', '.ccccccc.'] },
+  { moves: 12, colors: 5, goal: { type: 'jelly' }, stars: [50000, 55000, 65000],
+    shape: ['xxxxxxxxx', 'xjjjjjjjx', 'xjjjjjjjx', 'xjjjjjjjx', 'xjjjjjjjx', 'xjjjjjjjx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx'],
+    obs: ['.........', '.........', '.........', '.........', '.........', '.........', 'cc.....cc', 'cc.....cc', 'ccc...ccc'] },
+  { moves: 14, colors: 5, goal: { type: 'ingredients', n: 3 }, stars: [47000, 55000, 65000], shape: FULL,
+    obs: ['.........', '.........', '.........', '.........', 'cc.....cc', '.........', '.........', '.........', '.........'] },
+  { moves: 14, colors: 5, goal: { type: 'order', items: [{ k: 'choco', n: 11 }, { k: 'c3', n: 50 }] }, stars: [20000, 27000, 35000], shape: FULL,
+    obs: ['.........', '.........', '.........', '...ccc...', '..ccccc..', '...ccc...', '.........', '.........', '.........'] },
+  { moves: 17, colors: 5, goal: { type: 'jelly' }, stars: [55000, 65000, 75000],
+    shape: ['JJJJJJJJJ', 'jjjjjjjjj', 'jjjjjjjjj', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx'],
+    obs: ['.........', '.........', '.........', '1.1.1.1.1', '.........', '.........', '.........', 'cc.....cc', 'ccc...ccc'] },
+  // ---- 炸弹糖坊: candy bombs ----
+  { moves: 14, colors: 5, goal: { type: 'order', items: [{ k: 'c1', n: 55 }] }, stars: [19000, 26000, 36000], shape: FULL,
+    bombs: { start: 2, t: 12, max: 2, p: .02 } },
+  { moves: 13, colors: 5, goal: { type: 'jelly' }, stars: [75000, 80000, 90000],
+    shape: ['xxxxxxxxx', 'xjjjjjjjx', 'xjjjjjjjx', 'xjjJJJjjx', 'xjjJjJjjx', 'xjjJJJjjx', 'xjjjjjjjx', 'xjjjjjjjx', 'xxxxxxxxx'],
+    bombs: { start: 2, t: 11, max: 3, p: .03 } },
+  { moves: 21, colors: 5, goal: { type: 'ingredients', n: 4 }, stars: [65000, 75000, 90000], shape: FULL,
+    bombs: { start: 2, t: 11, max: 3, p: .03 } },
+  { moves: 15, colors: 5, goal: { type: 'order', items: [{ k: 'frost', n: 9 }, { k: 'c2', n: 40 }] }, stars: [18000, 25000, 34000], shape: FULL,
+    obs: ['.........', '.........', '.2..2..2.', '.........', '.2..2..2.', '.........', '.2..2..2.', '.........', '.........'],
+    bombs: { start: 2, t: 11, max: 3, p: .03 } },
+  { moves: 16, colors: 5, goal: { type: 'jelly' }, stars: [65000, 75000, 85000],
+    shape: ['jjjjjjjjj', 'jxxxxxxxj', 'jxjjjjjxj', 'jxjxxxjxj', 'jxjxxxjxj', 'jxjxxxjxj', 'jxjjjjjxj', 'jxxxxxxxj', 'jjjjjjjjj'],
+    obs: ['l...l...l', '.........', '..l...l..', '.........', '.........', '.........', '..l...l..', '.........', 'l...l...l'],
+    bombs: { start: 2, t: 12, max: 2, p: .03 } },
+  // ---- 薄荷森林: mixed ----
+  { moves: 14, colors: 5, goal: { type: 'jelly' }, stars: [60000, 65000, 75000],
+    shape: ['xxxxxxxxx', 'xjjjjjjjx', 'xjjjjjjjx', 'xjjjjjjjx', 'xjjjjjjjx', 'xjjjjjjjx', 'xjjjjjjjx', 'xxxxxxxxx', 'xxxxxxxxx'],
+    obs: ['.........', '.l.....l.', '...l.l...', '.........', '...l.l...', '.l.....l.', '.........', 'c.......c', 'cc.....cc'] },
+  { moves: 26, colors: 5, goal: { type: 'order', items: [{ k: 'striped', n: 8 }, { k: 'wrapped', n: 5 }, { k: 'frost', n: 12 }] }, stars: [32000, 42000, 55000],
+    shape: ['.xxxxxxx.', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', '.xxxxxxx.'],
+    obs: ['.........', '.1.....1.', '..2...2..', '...3.3...', '.........', '...3.3...', '..2...2..', '.1.....1.', '.........'] },
+  { moves: 17, colors: 5, goal: { type: 'ingredients', n: 4 }, stars: [60000, 70000, 80000], shape: FULL,
+    obs: ['.........', '.........', '1.......1', '.1.....1.', '.........', '.........', '.........', 'c.......c', '.........'] },
+  { moves: 17, colors: 5, goal: { type: 'jelly' }, stars: [80000, 85000, 95000],
+    shape: ['xxxxxxxxx', 'xJJJJJJJx', 'xJjjjjjJx', 'xJjxxxjJx', 'xJjx.xjJx', 'xJjxxxjJx', 'xJjjjjjJx', 'xJJJJJJJx', 'xxxxxxxxx'],
+    obs: ['.........', '.........', '.........', '...222...', '...2.2...', '...222...', '.........', '.........', '.........'] },
+  { moves: 13, colors: 5, goal: { type: 'order', items: [{ k: 'choco', n: 25 }, { k: 'c3', n: 40 }] }, stars: [20000, 26000, 35000], shape: FULL,
+    obs: ['.........', '.........', '.........', '.........', '....c....', '...ccc...', '..ccccc..', '.ccccccc.', 'ccccccccc'],
+    bombs: { start: 1, t: 12, max: 2, p: .025 } },
+  // ---- 彩虹云端: harder mixes ----
+  { moves: 21, colors: 5, goal: { type: 'jelly' }, stars: [125000, 135000, 145000],
+    shape: ['JjjjjjjjJ', 'jJjjjjjJj', 'jjJjjjJjj', 'jjjJjJjjj', 'jjjjJjjjj', 'jjjJjJjjj', 'jjJjjjJjj', 'jJjjjjjJj', 'JjjjjjjjJ'],
+    bombs: { start: 2, t: 12, max: 2, p: .035 } },
+  { moves: 26, colors: 5, goal: { type: 'ingredients', n: 4 }, stars: [60000, 70000, 80000],
+    shape: ['xxxxxxxxx', 'xxxxxxxxx', 'xx.xxx.xx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xx.xxx.xx', 'xxxxxxxxx', 'xxxxxxxxx'],
+    obs: ['.........', '.........', '2.......2', '.l.l.l.l.', '.........', '.l.l.l.l.', '2.......2', '.........', '.........'] },
+  { moves: 26, colors: 5, goal: { type: 'order', items: [{ k: 'bomb', n: 2 }, { k: 'choco', n: 24 }] }, stars: [34000, 44000, 55000], shape: FULL,
+    obs: ['ccc...ccc', 'cc.....cc', 'c.......c', '.........', '.........', '.........', 'c.......c', 'cc.....cc', 'ccc...ccc'] },
+  { moves: 18, colors: 5, goal: { type: 'jelly' }, stars: [95000, 105000, 115000],
+    shape: ['jjjjjjjjj', 'jjjjjjjjj', 'jjxjjjxjj', 'jjjjjjjjj', 'jjjjxjjjj', 'jjjjjjjjj', 'jjxjjjxjj', 'jjjjjjjjj', 'jjjjjjjjj'],
+    obs: ['l.......l', '.........', '..3...3..', '...l.l...', '....3....', '...l.l...', '..3...3..', '.........', 'l.......l'] },
+  { moves: 15, colors: 5, goal: { type: 'order', items: [{ k: 'frost', n: 4 }, { k: 'choco', n: 10 }, { k: 'c0', n: 50 }] }, stars: [21000, 28000, 39000], shape: FULL,
+    obs: ['.........', '.2.2.2.2.', '.........', '.........', '.........', '.........', '.........', 'cc.....cc', 'ccc...ccc'],
+    bombs: { start: 2, t: 10, max: 3, p: .035 } },
+  // ---- 星光糖宫: finale ----
+  { moves: 13, colors: 5, goal: { type: 'jelly' }, stars: [60000, 65000, 75000],
+    shape: ['xxxxxxxxx', 'xjjjjjjjx', 'xjjjjjjjx', 'xjjjjjjjx', 'xjjjjjjjx', 'xjjjjjjjx', 'xjjjjjjjx', 'xxxxxxxxx', 'xxxxxxxxx'],
+    obs: ['c.......c', '.........', '.........', '.........', '.........', '.........', '.........', '.........', 'cc.....cc'],
+    bombs: { start: 2, t: 11, max: 3, p: .03 } },
+  { moves: 20, colors: 5, goal: { type: 'ingredients', n: 4 }, stars: [65000, 75000, 85000], shape: FULL,
+    obs: ['.........', '.........', '.1.1.1.1.', 'l.......l', '.l.....l.', '.........', '.2.2.2.2.', '.........', '.........'],
+    bombs: { start: 1, t: 12, max: 2, p: .025 } },
+  { moves: 20, colors: 5, goal: { type: 'order', items: [{ k: 'c2', n: 50 }, { k: 'striped', n: 8 }, { k: 'frost', n: 8 }] }, stars: [20000, 27000, 37000],
+    shape: ['..xxxxx..', '.xxxxxxx.', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', '.xxxxxxx.', '..xxxxx..'],
+    obs: ['..2...2..', '.........', '2.......2', '...lll...', '...l.l...', '...lll...', '2.......2', '.........', '..2...2..'] },
+  { moves: 24, colors: 5, goal: { type: 'jelly' }, stars: [140000, 150000, 160000],
+    shape: ['JJJJJJJJJ', 'JJJJJJJJJ', 'JJxxxxxJJ', 'JJxxxxxJJ', 'JJxxxxxJJ', 'JJxxxxxJJ', 'JJxxxxxJJ', 'JJJJJJJJJ', 'JJJJJJJJJ'],
+    obs: ['.........', '.........', '..2.2.2..', '.........', '..2.c.2..', '.........', '..2.2.2..', '.........', '.........'] },
+  { moves: 18, colors: 5, goal: { type: 'jelly' }, stars: [70000, 80000, 90000],
+    shape: ['jjjjjjjjj', 'jxxxxxxxj', 'jxjjjjjxj', 'jxjxxxjxj', 'jxjxxxjxj', 'jxjxxxjxj', 'jxjjjjjxj', 'jxxxxxxxj', 'jjjjjjjjj'],
+    obs: ['l...l...l', '.2.....2.', '.........', '...3.3...', '....c....', '...3.3...', '.........', '.2.....2.', 'l...l...l'],
+    bombs: { start: 1, t: 13, max: 2, p: .025 } },
 ];
-const EPISODES = [0, 5, 10, 15];
+const EPISODES = LEVELS.map((_, i) => i).filter(i => i % 5 === 0);
 // Safety net: an order can never ask for a colour that isn't on the board.
-LEVELS.forEach(L => { if (L.goal.type === 'order') L.goal.items.forEach(it => { if (it.k[0] === 'c') L.colors = Math.max(L.colors, +it.k.slice(1) + 1); }); });
+LEVELS.forEach(L => { if (L.goal.type === 'order') L.goal.items.forEach(it => { if (/^c\d$/.test(it.k)) L.colors = Math.max(L.colors, +it.k.slice(1) + 1); }); });
 
 /* ================= heroes =================
    One hero joins each level. Each hero has an active skill (charged by crushing candies,
@@ -452,7 +576,7 @@ const HP = {
   arrows: [2, 3, 4, 5, 6], quick: [10, 18, 26, 34, 42],
   bears: [2, 2, 3, 3, 4], bearMoves: [2, 3, 3, 4, 5], pet: [2, 3, 4, 5, 6],
 };
-const UPG = [60, 120, 200, 320];
+const UPG = [150, 300, 500, 800];
 const MAXLV = 5;
 // cost = candies to crush to charge the tap skill, per tap-skill level (some upgrades charge faster instead of hitting harder)
 // voice: [speech pitch, speech rate, fallback shout base frequency in Hz]
@@ -470,7 +594,12 @@ const HERO = Object.fromEntries(HERO_LIST.map(h => [h.id, h]));
 const STR = {
   heroes: '英雄', play: '开始',
   'g.score': '目标分', 'g.jelly': '果冻', 'g.order': '收集', 'g.ing': '运送食材',
-  ep: ['糖果小镇', '柠檬水湖', '巧克力山丘', '果冻丛林'],
+  ep: ['糖果小镇', '柠檬水湖', '巧克力山丘', '果冻丛林', '糖霜雪原', '冰晶城堡', '甘草峡谷', '可可工厂', '炸弹糖坊', '薄荷森林', '彩虹云端', '星光糖宫'],
+  'el.frost': '<b>糖霜</b>：在旁边消除糖果，或用特殊糖果击中，每次剥掉一层。',
+  'el.lock': '<b>甘草锁</b>：被锁住的糖果不能移动；让它参与消除就能解锁。',
+  'el.choco': '<b>巧克力</b>：在旁边消除就能吃掉它；如果一步都没碰到巧克力，它就会蔓延！',
+  'el.bomb': '<b>糖果炸弹</b>：每走一步数字减一，归零前一定要消除它！',
+  bombOut: '糖果炸弹爆炸了！', 'why.bomb': '有一颗糖果炸弹的倒计时归零了。下次记得优先消除它！',
   'w.sweet': '甜蜜！', 'w.tasty': '美味！', 'w.delicious': '可口！', 'w.divine': '神级！', 'w.sugar': '糖果狂欢！',
   'w.shuffle': '洗牌！', 'w.welcome': '欢迎回来！', 'w.lastStand': '背水一战！', 'w.skill': n => n + '！',
   'pop.crit': '暴击！', 'pop.sneak': '偷袭！', 'pop.moves': n => `+${n} 步`,
@@ -496,7 +625,7 @@ const STR = {
   'toast.upgraded': (h, s, lv) => `${h}的「${s}」升到了 ${lv} 级！`,
   tap: '点我！', petLeft: s => `剩余 ${s} 步`, heroAria: (h, c) => `${c}·${h}`,
   level: n => `第 ${n} 关`, 'gt.score': n => `达到 <b>${n}</b> 分！`, 'gt.jelly': '清除所有<b>果冻</b>！',
-  'gt.order': '收集指定的糖果！', 'gt.ing': n => `把 <b>${n}</b> 个食材运送到底部！`, movesN: n => `<b>${n}</b> 步`,
+  'gt.order': '完成收集目标！', 'gt.ing': n => `把 <b>${n}</b> 个食材运送到底部！`, movesN: n => `<b>${n}</b> 步`,
   sendOne: '派出一位英雄助战：', playBang: '开始！', upgradeHeroes: '升级英雄', map: '地图',
   finalScore: '得分', newBest: '新纪录！', coinsWon: n => `+${n} 金币`, allDone: '恭喜你通关了所有关卡！&#127852;',
   next: '下一关 &#9654;', replay: '重玩', outOfMoves: '步数用完了！',
@@ -510,6 +639,7 @@ const STR = {
     &#8226; 连成 <b>5</b> 个 &rarr; ${ic.bomb} 彩色炸弹（与糖果交换，清除该颜色的所有糖果）。<br>
     &#8226; 把两颗特殊糖果交换到一起，触发超强组合！<br>
     &#8226; 清除 ${ic.jelly} 果冻、收集指定糖果，或把 ${ic.cherry} 食材运送到底部。<br>
+    &#8226; 后面的关卡会出现障碍：${ic.frost} 糖霜（在旁边消除剥掉一层）、${ic.locked} 甘草锁（参与消除即可解锁）、${ic.choco} 巧克力（不处理会蔓延）、${ic.timer} 糖果炸弹（倒计时归零前要消除）。<br>
     &#8226; 每关免费道具：棒棒糖锤子和洗牌。<br>
     &#8226; <b>英雄：</b>每关派出一位英雄。消除糖果会为英雄充能&mdash;&mdash;英雄发光时点击它即可释放技能。每位英雄还有一个常驻的被动技能。<br>
     &#8226; 玩关卡赚取金币，把英雄的两个技能升到最高 5 级（永远没有内购）。<br>
@@ -583,6 +713,11 @@ if (!HERO[save.hero]) save.hero = 'warrior';
 if (!save.heroLv || typeof save.heroLv !== 'object') save.heroLv = {};
 HERO_LIST.forEach(h => heroLv(h.id));
 save.coins = Math.max(0, save.coins | 0);
+// saves from before new levels were added stopped unlocking at the old last level
+{
+  const cleared = Object.keys(save.stars || {}).filter(k => save.stars[k] > 0).map(Number).filter(n => n > 0);
+  if (cleared.length) save.unlocked = Math.max(save.unlocked | 0, Math.min(LEVELS.length, Math.max(...cleared) + 1));
+}
 function loadSave() {
   try {
     const s = JSON.parse(localStorage.getItem(SAVE_KEY));
@@ -682,6 +817,10 @@ const Snd = {
   arrow() { this.noise(.22, { vol: .2, freq: 2500, to: 600, type: 'bandpass', q: 6 }); this.tone(900, .12, { type: 'triangle', vol: .08, to: 300 }); },
   meteor() { this.noise(.4, { vol: .18, freq: 400, to: 2400, type: 'bandpass', q: 1.5 }); },
   chomp() { this.tone(260, .08, { type: 'square', vol: .1, to: 160 }); this.tone(330, .08, { type: 'square', vol: .08, at: .09, to: 200 }); },
+  crack() { this.noise(.14, { vol: .22, freq: 3800, to: 1200, type: 'bandpass', q: 2 }); this.tone(1500, .08, { type: 'triangle', vol: .08, to: 900 }); },
+  unlock() { this.tone(520, .07, { type: 'square', vol: .06 }); this.tone(880, .16, { type: 'triangle', vol: .13, at: .05 }); },
+  ooze() { this.tone(170, .3, { vol: .2, to: 85 }); this.noise(.22, { vol: .08, freq: 420, to: 180 }); },
+  fuse() { this.tone(1200, .05, { type: 'square', vol: .05 }); this.tone(900, .07, { type: 'square', vol: .05, at: .07 }); },
   coin() { this.tone(1319, .08, { type: 'square', vol: .07 }); this.tone(1976, .25, { type: 'square', vol: .07, at: .07 }); },
   levelup() { [523, 784, 1047, 1568, 2093].forEach((f, i) => this.tone(f, .25, { type: 'triangle', vol: .18, at: i * .07 })); },
   // Vocal-ish "hya!" (sawtooth through 'a'-vowel formants) used when no Chinese speech voice exists.
@@ -1063,13 +1202,73 @@ function drawJellyIcon(g) {
   g.fillStyle = gr; g.fill(); g.lineWidth = .05; g.strokeStyle = '#fff'; g.stroke();
   gloss(g, -.05, -.24, .24, .06, 0);
 }
+function drawFrost(g, px, n) {
+  const h = .47, body = () => { g.beginPath(); rr(g, -h, -h, h * 2, h * 2, .13); };
+  g.save(); shadowOn(g, px); body();
+  const gr = g.createLinearGradient(0, -h, 0, h);
+  gr.addColorStop(0, ['#ffffff', '#f4fbff', '#e9f5ff'][n - 1]); gr.addColorStop(1, ['#cfe6fb', '#acd3f7', '#86bdf0'][n - 1]);
+  g.fillStyle = gr; g.fill(); g.restore();
+  g.save(); body(); g.clip();
+  g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = .035;
+  for (let i = -3; i <= 3; i++) { g.beginPath(); g.moveTo(i * .22 - .5, .5); g.lineTo(i * .22 + .5, -.5); g.stroke(); }
+  g.restore();
+  // one fluffy cream tier per layer
+  for (let i = 0; i < n; i++) {
+    const y = .25 - i * .19, k = 4 - i, w = .38 - i * .07, rad = w / k * 1.12;
+    g.save(); shadowOn(g, px * .5); g.beginPath();
+    for (let j = 0; j < k; j++) { const cx = -w + (j + .5) * (2 * w / k); g.moveTo(cx + rad, y); g.arc(cx, y, rad, 0, Math.PI * 2); }
+    g.fillStyle = '#ffffff'; g.fill(); g.restore();
+    g.lineWidth = .016; g.strokeStyle = 'rgba(120,165,215,.75)'; g.stroke();
+  }
+  if (n === 3) { g.beginPath(); g.moveTo(-.07, -.17); g.quadraticCurveTo(0, -.4, .07, -.17); g.closePath(); g.fillStyle = '#fff'; g.fill(); g.stroke(); }
+  body(); g.lineWidth = .03; g.strokeStyle = ['#b9d8f5', '#8fc0ee', '#5d9ddd'][n - 1]; g.stroke();
+  gloss(g, -.24, -.33, .13, .04, -.15);
+}
+function drawChoco(g, px) {
+  const h = .47;
+  g.save(); shadowOn(g, px); g.beginPath(); rr(g, -h, -h, h * 2, h * 2, .1);
+  const gr = g.createLinearGradient(-h, -h, h, h); gr.addColorStop(0, '#9a5a2c'); gr.addColorStop(1, '#4a220c');
+  g.fillStyle = gr; g.fill(); g.restore();
+  for (const [x, y] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+    const cx = x * .215, cy = y * .215, s = .17;
+    g.beginPath(); rr(g, cx - s, cy - s, s * 2, s * 2, .05);
+    const g2 = g.createLinearGradient(cx - s, cy - s, cx + s, cy + s); g2.addColorStop(0, '#b06a36'); g2.addColorStop(1, '#6b3412');
+    g.fillStyle = g2; g.fill(); g.lineWidth = .02; g.strokeStyle = 'rgba(40,15,0,.55)'; g.stroke();
+    g.fillStyle = 'rgba(255,220,180,.22)'; g.beginPath(); rr(g, cx - s * .8, cy - s * .8, s * 1.2, s * .3, .03); g.fill();
+  }
+  g.beginPath(); rr(g, -h, -h, h * 2, h * 2, .1); g.lineWidth = .028; g.strokeStyle = '#2e1204'; g.stroke();
+}
+function drawLock(g) {
+  for (const s of [1, -1]) {
+    g.save(); g.rotate(s * Math.PI / 4);
+    g.beginPath(); rr(g, -.55, -.085, 1.1, .17, .085);
+    const gr = g.createLinearGradient(0, -.085, 0, .085); gr.addColorStop(0, '#5a1424'); gr.addColorStop(.5, '#2a060e'); gr.addColorStop(1, '#14030a');
+    g.fillStyle = gr; g.fill();
+    g.save(); g.clip(); g.strokeStyle = 'rgba(255,110,140,.4)'; g.lineWidth = .03;
+    for (let i = -5; i <= 5; i++) { g.beginPath(); g.moveTo(i * .11 - .05, -.09); g.lineTo(i * .11 + .05, .09); g.stroke(); }
+    g.restore(); g.restore();
+  }
+  g.beginPath(); g.arc(0, 0, .12, 0, Math.PI * 2); g.fillStyle = '#3a0a14'; g.fill();
+  g.lineWidth = .025; g.strokeStyle = '#ff8aa6'; g.stroke();
+  gloss(g, -.04, -.05, .05, .025, -.4);
+}
 function drawKey(g, key, px) {
   const t = key[0], n = +key.slice(1);
   if (key === 'bomb') drawBomb(g, px);
   else if (key === 'cherry') drawCherry(g, px);
   else if (key === 'nut') drawNut(g, px);
   else if (key === 'jelly') drawJellyIcon(g);
+  else if (key === 'choco') drawChoco(g, px);
+  else if (key === 'lock') drawLock(g);
+  else if (key === 'locked') { drawCandy(g, 4, px); drawLock(g); }
+  else if (key === 'timer') {
+    drawCandy(g, 0, px);
+    g.beginPath(); g.arc(0, .03, .21, 0, Math.PI * 2); g.fillStyle = '#2b1630'; g.fill(); g.lineWidth = .045; g.strokeStyle = '#fff'; g.stroke();
+    g.save(); g.scale(1 / px, 1 / px); g.fillStyle = '#fff'; g.font = `900 ${Math.round(px * .27)}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('5', 0, px * .045); g.restore();
+  }
+  else if (key === 'frost') drawFrost(g, px, 2);
   else if (key.startsWith('bear')) drawBear(g, +key.slice(4), px);
+  else if (t === 'f') drawFrost(g, px, n);
   else if (t === 'n') drawCandy(g, n, px);
   else if (t === 'h') drawCandy(g, n, px, 'h');
   else if (t === 'v') drawCandy(g, n, px, 'v');
@@ -1088,7 +1287,7 @@ function buildSprites() {
   spriteT = T; spriteDPR = DPR;
   const px = T * DPR;
   for (let c = 0; c < 6; c++) for (const p of 'nhvw') SPR[p + c] = mkSprite(px, p + c);
-  for (const k of ['bomb', 'cherry', 'nut', 'bear0', 'bear1', 'bear2']) SPR[k] = mkSprite(px, k);
+  for (const k of ['bomb', 'cherry', 'nut', 'bear0', 'bear1', 'bear2', 'f1', 'f2', 'f3', 'choco', 'lock']) SPR[k] = mkSprite(px, k);
 }
 function icon(key) { return ICONS[key] || (ICONS[key] = mkSprite(56, key).toDataURL()); }
 function skey(x) {
@@ -1097,6 +1296,7 @@ function skey(x) {
     case 'stripeH': return 'h' + x.color;
     case 'stripeV': return 'v' + x.color;
     case 'wrapped': case 'armed': return 'w' + x.color;
+    case 'frost': return 'f' + Math.max(1, Math.min(3, x.hp));
     default: return x.type;
   }
 }
@@ -1288,8 +1488,17 @@ const isIng = x => !!x && (x.type === 'cherry' || x.type === 'nut');
 const isStriped = x => !!x && (x.type === 'stripeH' || x.type === 'stripeV');
 const isSpecial = x => isStriped(x) || (!!x && x.type === 'wrapped');
 const matchable = x => !!x && x.color >= 0 && x.type !== 'armed';
+// classic blockers: frosting (1-3 layers) and chocolate fill a cell and never move;
+// licorice-locked candies stay put too. Candies falling down a column slide past (behind) all of them.
+const isBlock = x => !!x && (x.type === 'frost' || x.type === 'choco');
+const isFixed = x => isBlock(x) || (!!x && !!x.lock);
+// an ordinary candy that hero passives / sugar crush may turn into a special one
+const plain = x => !!x && x.type === 'normal' && !x.lock && !x.timer;
+const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const inB = (r, c) => r >= 0 && r < ROWS && c >= 0 && c < COLS && mask[r][c];
 function mkCell(color, type, r, c) { return { id: ++uid, color, type, x: c, y: r, scale: 1, alpha: 1, sq: 0, glint: -1e9 }; }
+function mkBlock(type, hp, r, c) { const x = mkCell(-1, type, r, c); x.hp = hp; return x; }
+const obsAt = (r, c) => (G.L.obs && G.L.obs[r] && G.L.obs[r][c]) || '.';
 function eachCell(fn) { for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (grid[r][c]) fn(grid[r][c], r, c); }
 function countIng() { let n = 0; eachCell(x => { if (isIng(x)) n++; }); return n; }
 
@@ -1311,18 +1520,27 @@ function generateBoard() {
       grid[r] = [];
       for (let c = 0; c < COLS; c++) {
         if (!mask[r][c]) { grid[r][c] = null; continue; }
+        const o = obsAt(r, c);
+        if (o >= '1' && o <= '3') { grid[r][c] = mkBlock('frost', +o, r, c); continue; }
+        if (o === 'c') { grid[r][c] = mkBlock('choco', 1, r, c); continue; }
         let color, guard = 0;
         do { color = rnd(G.colors); } while (guard++ < 50 && (
           (c >= 2 && grid[r][c - 1] && grid[r][c - 2] && grid[r][c - 1].color === color && grid[r][c - 2].color === color) ||
           (r >= 2 && grid[r - 1][c] && grid[r - 2][c] && grid[r - 1][c].color === color && grid[r - 2][c].color === color)));
         grid[r][c] = mkCell(color, 'normal', r, c);
+        if (o === 'l') grid[r][c].lock = true;
       }
     }
     if (G.ing) {
-      const cols = []; for (let c = 0; c < COLS; c++) if (colTop[c] >= 0) cols.push(c);
+      const cols = []; for (let c = 0; c < COLS; c++) if (colTop[c] >= 0 && !isFixed(grid[colTop[c]][c])) cols.push(c);
       const c = cols[rnd(cols.length)];
       grid[colTop[c]][c] = mkCell(-1, 'cherry', colTop[c], c);
       G.ing.spawned = 1;
+    }
+    const Bm = G.L.bombs;
+    if (Bm && Bm.start) {
+      const cand = []; eachCell(x => { if (plain(x)) cand.push(x); });
+      shuffleArr(cand).slice(0, Bm.start).forEach(x => { x.timer = Bm.t; });
     }
     if (findMoves().length >= 3) return;
   }
@@ -1337,7 +1555,7 @@ function matchAt(r, c) {
 }
 function validSwap(r, c, r2, c2) {
   const A = grid[r][c], B = grid[r2][c2];
-  if (!A || !B || (isIng(A) && isIng(B))) return false;
+  if (!A || !B || (isIng(A) && isIng(B)) || isFixed(A) || isFixed(B)) return false;
   if ((A.type === 'bomb' && !isIng(B)) || (B.type === 'bomb' && !isIng(A))) return true;
   if (isSpecial(A) && isSpecial(B)) return true;
   grid[r][c] = B; grid[r2][c2] = A;
@@ -1405,7 +1623,7 @@ function findGroups(swap) {
       if (spawn == null) { const run = g.runs.find(r => r.cells.length === maxLen); spawn = run.cells[(run.cells.length - 1) >> 1]; }
     }
     const sc = grid[kr(spawn)][kc(spawn)];
-    if (sc && sc.type !== 'normal') { const alt = [...g.keys].find(k => grid[kr(k)][kc(k)].type === 'normal'); if (alt != null) spawn = alt; }
+    if (sc && (sc.type !== 'normal' || sc.lock)) { const alt = [...g.keys].find(k => { const y = grid[kr(k)][kc(k)]; return y.type === 'normal' && !y.lock; }); if (alt != null) spawn = alt; }
     g.spawn = spawn;
     if (g.type === 'striped') {
       const dirH = swap && swapKeys.includes(spawn) ? swap.h : !g.runs.find(r => r.cells.length === 4).h;
@@ -1432,7 +1650,7 @@ class Blast {
     const x = grid[r][c];
     if (isIng(x)) return;
     this.marks.set(k, d);
-    if (x && !noAct) this.activate(x, r, c, d);
+    if (x && !noAct && !x.lock) this.activate(x, r, c, d);
   }
   activate(x, r, c, d) {
     switch (x.type) {
@@ -1508,18 +1726,43 @@ function addScore(pts, c, r, color, big) {
   G.score += pts;
   if (c != null) pops.push({ x: (c + .5) * T, y: (r + .5) * T, text: fmt(pts), color: color || '#fff', t0: NOW, big });
 }
+function hitJelly(r, c) {
+  if (jelly[r][c] <= 0) return;
+  jelly[r][c]--; G.jellyLeft--; G.score += 1000; jellyBurst(r, c); Snd.play('jelly'); updateHUD();
+  jellyHit[r][c] = NOW;
+  if (state === 'play') flyGoal('jelly', r, c, 0);
+}
+function hitBlock(x, r, c, dead) {
+  x.hp = Math.max(0, x.hp - 1); x.sq = .22; tween(x, { sq: 0 }, 320, E.wobble);
+  if (x.type === 'choco') G.chocoHit = true;
+  blockBurst(x, r, c); Snd.play(x.type === 'choco' ? 'chomp' : 'crack');
+  if (dead) { hitJelly(r, c); addScore(200, c, r, x.type === 'choco' ? '#ffd7a8' : '#e3f3ff'); tween(x, { scale: 0, alpha: 0 }, 200, E.inQuad); }
+  else G.score += 100;
+}
+function breakLock(x, r, c) {
+  x.lock = false; x.sq = .2; tween(x, { sq: 0 }, 320, E.wobble);
+  blockBurst({ type: 'lock' }, r, c); sparkle(r, c, 6, '#ff9ab4'); Snd.play('unlock'); G.score += 100;
+}
 async function executeBlast(b, creations) {
   creations = creations || [];
   let maxD = 0, n = 0, extra = 0, er = 0, ec = 0;
+  const keep = new Set(); // hit but staying: frosting with layers left, candies whose licorice lock just broke
   for (const [k, d] of b.marks) {
     const r = kr(k), c = kc(k), x = grid[r][c], armed = b.arm.has(k);
     if (d > maxD) maxD = d;
+    if (isBlock(x)) {
+      const dead = x.hp <= 1;
+      if (dead) n++; else keep.add(k);
+      later(d, () => hitBlock(x, r, c, dead));
+      continue;
+    }
+    if (x && x.lock) {
+      keep.add(k); n++;
+      later(d, () => { hitJelly(r, c); breakLock(x, r, c); });
+      continue;
+    }
     later(d, () => {
-      if (jelly[r][c] > 0) {
-        jelly[r][c]--; G.jellyLeft--; G.score += 1000; jellyBurst(r, c); Snd.play('jelly'); updateHUD();
-        jellyHit[r][c] = NOW;
-        if (state === 'play') flyGoal('jelly', r, c, 0);
-      }
+      hitJelly(r, c);
       if (x && !armed) burst(x);
     });
     if (x && !armed) {
@@ -1537,9 +1780,10 @@ async function executeBlast(b, creations) {
   await wait(maxD + 250);
   for (const [k] of b.marks) {
     const r = kr(k), c = kc(k), x = grid[r][c];
-    if (!x) continue;
+    if (!x || keep.has(k)) continue;
     if (b.arm.has(k)) { x.type = 'armed'; x.scale = 1; continue; }
-    if (x.color >= 0) countOrder('c' + x.color, r, c);
+    if (isBlock(x)) countOrder(x.type, r, c);
+    else if (x.color >= 0) countOrder('c' + x.color, r, c);
     grid[r][c] = null;
   }
   b.acts.forEach(a => typeof a === 'string' ? countOrder(a) : countOrder(a.k, a.r, a.c));
@@ -1567,7 +1811,12 @@ function spawnCell(c) {
       return mkCell(-1, t, -5, c);
     }
   }
-  return mkCell(rnd(G.colors), 'normal', -5, c);
+  const x = mkCell(rnd(G.colors), 'normal', -5, c), Bm = G.L.bombs;
+  if (Bm && Math.random() < Bm.p) {
+    let on = 0; eachCell(y => { if (y.timer) on++; });
+    if (on < Bm.max) x.timer = Bm.t;
+  }
+  return x;
 }
 // Squash on landing, then spring back (visual only, never awaited).
 function land(x, d) { x.sq = Math.min(.24, .07 + d * .035); tween(x, { sq: 0 }, 320, E.wobble); }
@@ -1577,7 +1826,7 @@ async function gravity() {
   if (G.ing) G.ing.fillSpawned = false;
   for (let c = 0; c < COLS; c++) {
     if (colTop[c] < 0) continue;
-    const rows = []; for (let r = 0; r < ROWS; r++) if (mask[r][c]) rows.push(r);
+    const rows = []; for (let r = 0; r < ROWS; r++) if (mask[r][c] && !isFixed(grid[r][c])) rows.push(r);
     let w = rows.length - 1;
     for (let i = rows.length - 1; i >= 0; i--) {
       const r = rows[i], x = grid[r][c]; if (!x) continue;
@@ -1586,14 +1835,18 @@ async function gravity() {
     }
     for (let i = w, n = 0; i >= 0; i--, n++) {
       const r = rows[i], x = spawnCell(c);
-      x.x = c; x.y = rows[0] - 1 - n; grid[r][c] = x; ps.push(fallTo(x, r));
+      x.x = c; x.y = colTop[c] - 1 - n; grid[r][c] = x; ps.push(fallTo(x, r));
     }
   }
   if (ps.length) await Promise.all(ps);
 }
 async function collectIngredients() {
   const got = [];
-  for (let c = 0; c < COLS; c++) { const r = colBot[c]; if (r >= 0 && isIng(grid[r][c])) got.push([r, c, grid[r][c]]); }
+  for (let c = 0; c < COLS; c++) {
+    let r = colBot[c];
+    while (r >= 0 && (!mask[r][c] || isFixed(grid[r][c]))) r--;
+    if (r >= 0 && isIng(grid[r][c])) got.push([r, c, grid[r][c]]);
+  }
   if (!got.length) return false;
   Snd.play('collect');
   for (const [r, c, x] of got) {
@@ -1623,6 +1876,11 @@ async function cascade(swap, quiet) {
         if (g.type) creations.push({ k: g.spawn, color: g.type === 'bomb' ? -1 : g.color, type: g.type === 'striped' ? g.stype : g.type });
       }
       for (const g of groups) for (const k of g.keys) b.hit(kr(k), kc(k), 0);
+      // a match cracks frosting / chocolate right next to it
+      for (const g of groups) for (const k of g.keys) for (const [dr, dc] of N4) {
+        const r2 = kr(k) + dr, c2 = kc(k) + dc;
+        if (inB(r2, c2) && isBlock(grid[r2][c2])) b.hit(r2, c2, 60, true);
+      }
       if (creations.length && state === 'play' && G.hero && G.hero.id === 'mage') arcaneSpark(b, creations);
       Snd.pop(chain);
       total += await executeBlast(b, creations);
@@ -1655,7 +1913,12 @@ async function trySwap(p1, p2) {
   if (Math.abs(p1.r - p2.r) + Math.abs(p1.c - p2.c) !== 1) return;
   const a = grid[p1.r][p1.c], b = grid[p2.r][p2.c];
   if (!a || !b) return;
-  busy = true; clearHint(); selected = null;
+  if (isFixed(a) || isFixed(b)) {
+    Snd.play('bad'); selected = null;
+    for (const x of [a, b]) if (isFixed(x)) { x.sq = -.16; tween(x, { sq: 0 }, 320, E.wobble); }
+    return;
+  }
+  busy = true; clearHint(); selected = null; G.chocoHit = false;
   Snd.play('swap');
   for (const x of [a, b]) tween(x, { scale: 1.14 }, 85, E.outQuad).then(() => tween(x, { scale: 1 }, 110, E.inOut));
   await Promise.all([tween(a, { x: p2.c, y: p2.r }, 170, E.inOut), tween(b, { x: p1.c, y: p1.r }, 170, E.inOut)]);
@@ -1693,7 +1956,7 @@ async function doCombo(a, b, pa, pb) {
       B.colorAll(color, bp.r, bp.c, 0);
     } else {
       const toWrapped = other.type === 'wrapped', targets = [];
-      eachCell((x, r, c) => { if (x !== other && x.type === 'normal' && x.color === color) targets.push({ r, c, x }); });
+      eachCell((x, r, c) => { if (x !== other && x.type === 'normal' && !x.lock && x.color === color) targets.push({ r, c, x }); });
       shuffleArr(targets);
       spawnFx({ t: 'orb', r: bp.r, c: bp.c });
       targets.forEach((t, i) => later(i * 45, () => {
@@ -1719,6 +1982,39 @@ async function doCombo(a, b, pa, pb) {
   await executeBlast(B);
   await gravity();
 }
+// Chocolate creeps onto a neighbouring candy after every move that didn't touch any chocolate.
+async function spreadChoco() {
+  const cand = [];
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    if (!grid[r][c] || grid[r][c].type !== 'choco') continue;
+    for (const [dr, dc] of N4) { const r2 = r + dr, c2 = c + dc; if (inB(r2, c2) && plain(grid[r2][c2])) cand.push([r2, c2, r, c]); }
+  }
+  if (!cand.length) return false;
+  const [r, c, fr, fc] = cand[rnd(cand.length)], x = mkBlock('choco', 1, fr, fc);
+  x.scale = .55; grid[r][c] = x; Snd.play('ooze');
+  await tween(x, { x: c, y: r, scale: 1 }, 300, E.outBack);
+  return true;
+}
+// Candy bombs count down after each move; returns the first one that hit zero.
+function tickBombs() {
+  let boom = null, low = 99;
+  eachCell((x, r, c) => {
+    if (!x.timer) return;
+    x.timer--; low = Math.min(low, x.timer); x.sq = .16; tween(x, { sq: 0 }, 280, E.wobble);
+    if (x.timer <= 0 && !boom) boom = { r, c, x };
+  });
+  if (low <= 3) Snd.play('fuse');
+  return boom;
+}
+async function bombOut(b) {
+  hammerMode = false; heroAim = false; selected = null; hint = null; hideToast();
+  shake = 22; quake(true); Snd.play('boom'); Snd.play('bomb');
+  spawnFx({ t: 'flash', d: 0 }); spawnFx({ t: 'ring', r: b.r, c: b.c, rad: 3, color: -1 });
+  burst(b.x); sparkle(b.r, b.c, 18, '#ffb347');
+  tween(b.x, { scale: 1.8, alpha: 0 }, 380, E.outQuad);
+  await wait(900);
+  return lose('bomb');
+}
 async function afterMove(used) {
   if (used && G.ing) G.ing.since++;
   updateHUD();
@@ -1729,6 +2025,11 @@ async function afterMove(used) {
     if (G.hero.id === 'rogue' && Math.random() < HP.sneak[heroLv('rogue').p - 1] / 100) sneakStripe();
     res = checkEnd();
     if (res === 'win') return win();
+  }
+  if (used) {
+    if (!G.chocoHit && await spreadChoco()) res = checkEnd();
+    const boom = tickBombs();
+    if (boom) return bombOut(boom);
   }
   if (res === 'lose' && G.hero && G.hero.id === 'warrior' && !G.lastStand) {
     G.lastStand = true;
@@ -1751,8 +2052,17 @@ async function afterMove(used) {
   for (let g = 0; g < 5 && !findMoves().length; g++) {
     showWord(_t('w.shuffle'), 'blue'); await wait(800); await shuffleBoard();
   }
+  if (!findMoves().length) giveColorBomb();
   busy = false; lastAction = NOW;
   saveRun();
+}
+// Last resort when blockers leave no possible swap: a colour bomb can always be swapped with a neighbour.
+function giveColorBomb() {
+  const cand = [];
+  eachCell((x, r, c) => { if (plain(x) && N4.some(([dr, dc]) => inB(r + dr, c + dc) && plain(grid[r + dr][c + dc]))) cand.push(x); });
+  if (!cand.length) return;
+  const x = cand[rnd(cand.length)];
+  x.type = 'bomb'; x.color = -1; x.scale = 1.6; tween(x, { scale: 1 }, 320, E.outBack); Snd.play('special');
 }
 function goalDone() {
   const t = G.L.goal.type;
@@ -1776,7 +2086,7 @@ async function win() {
   const L = G.L, n = G.i + 1;
   const stars = G.score >= L.stars[2] ? 3 : G.score >= L.stars[1] ? 2 : 1;
   const newBest = G.score > (save.best[n] || 0);
-  const coins = 40 + stars * 20 + (save.stars[n] ? 0 : 60);
+  const coins = 20 + stars * 10 + (save.stars[n] ? 0 : 30);
   save.coins += coins;
   save.stars[n] = Math.max(save.stars[n] || 0, stars);
   if (newBest) save.best[n] = G.score;
@@ -1787,14 +2097,14 @@ async function win() {
   Snd.win();
   showWin(stars, newBest, coins);
 }
-async function lose() {
+async function lose(reason) {
   state = 'over'; busy = true; selected = null; hint = null; hammerMode = false; heroAim = false;
   clearRun(); hideToast(); updateHUD();
-  save.coins += 10; persist();
+  save.coins += 5; persist();
   await wait(500);
   Music.duck(.3);
   Snd.lose();
-  showLose(10);
+  showLose(5, reason);
 }
 async function sugarCrush() {
   const specials = () => { const s = []; eachCell((x, r, c) => { if (isSpecial(x) || x.type === 'bomb' || x.type === 'armed') s.push([r, c]); }); return s; };
@@ -1803,7 +2113,7 @@ async function sugarCrush() {
   await wait(1400);
   for (let guard = 0; guard < 25; guard++) {
     while (G.moves > 0) {
-      const cand = []; eachCell((x, r, c) => { if (x.type === 'normal') cand.push([r, c, x]); });
+      const cand = []; eachCell((x, r, c) => { if (plain(x)) cand.push([r, c, x]); });
       if (!cand.length) break;
       const [r, c, x] = cand[rnd(cand.length)];
       x.type = Math.random() < .5 ? 'stripeH' : 'stripeV'; x.scale = 1.5; tween(x, { scale: 1 }, 220, E.outBack);
@@ -1818,7 +2128,7 @@ async function sugarCrush() {
 }
 async function shuffleBoard() {
   const pos = [], objs = [];
-  eachCell((x, r, c) => { if (!isIng(x)) { pos.push([r, c]); objs.push(x); } });
+  eachCell((x, r, c) => { if (!isIng(x) && !isFixed(x)) { pos.push([r, c]); objs.push(x); } });
   let ok = false;
   for (let t = 0; t < 200 && !ok; t++) {
     shuffleArr(objs); pos.forEach(([r, c], i) => { grid[r][c] = objs[i]; });
@@ -1876,8 +2186,12 @@ function targetWeight(r, c) {
   if (!x || isIng(x) || x.type === 'armed') return -1;
   let w = 1 + Math.random() * .6;
   w += jelly[r][c] * 6;
+  if (isBlock(x)) w += x.type === 'choco' ? 7 : 3 + x.hp * 2;
+  if (x.lock) w += 5;
+  if (x.timer) w += 6 + Math.max(0, 8 - x.timer) * 2;
   if (G.orders) for (const o of G.orders) if (o.got < o.n) {
     if (o.k === 'c' + x.color) w += 4;
+    if (isBlock(x) && o.k === x.type) w += 6;
     if ((o.k === 'striped' && isStriped(x)) || (o.k === 'wrapped' && x.type === 'wrapped') || (o.k === 'bomb' && x.type === 'bomb')) w += 8;
   }
   if (G.ing) for (let rr2 = r - 1; rr2 >= 0; rr2--) { const y = grid[rr2][c]; if (y && isIng(y)) { w += 6 + rr2 * .5; break; } }
@@ -2501,14 +2815,14 @@ function arcaneSpark(b, creations) {
   });
 }
 function sneakStripe() {
-  const cand = []; eachCell((x, r, c) => { if (x.type === 'normal') cand.push([r, c, x]); });
+  const cand = []; eachCell((x, r, c) => { if (plain(x)) cand.push([r, c, x]); });
   if (!cand.length) return;
   const [r, c, x] = cand[rnd(cand.length)];
   x.type = Math.random() < .5 ? 'stripeH' : 'stripeV'; x.scale = 1.6; tween(x, { scale: 1 }, 300, E.outBack);
   spawnFx({ t: 'slash', r, c }); sparkle(r, c, 8, '#b8ffb0'); popText(r, c, _t('pop.sneak'), '#8dff6b');
 }
 function blessCandies(ns, nw) {
-  const cand = []; eachCell((x, r, c) => { if (x.type === 'normal') cand.push([r, c, x]); });
+  const cand = []; eachCell((x, r, c) => { if (plain(x)) cand.push([r, c, x]); });
   shuffleArr(cand);
   cand.slice(0, ns + nw).forEach(([r, c, x], i) => later(i * 160, () => {
     x.type = i < ns ? (Math.random() < .5 ? 'stripeH' : 'stripeV') : 'wrapped';
@@ -2534,7 +2848,8 @@ function saveRun() {
     jelly: jelly.map(r => r.slice()),
     orders: G.orders ? G.orders.map(o => o.got) : null,
     ing: G.ing ? { spawned: G.ing.spawned, delivered: G.ing.delivered, since: G.ing.since } : null,
-    grid: grid.map(row => row.map(x => x ? [x.color, x.type === 'armed' ? 'wrapped' : x.type] : null)),
+    grid: grid.map(row => row.map(x => x ? [x.color, x.type === 'armed' ? 'wrapped' : x.type, x.hp || 0, x.lock ? 1 : 0, x.timer || 0] : null)),
+    chocoHit: !!G.chocoHit,
     hero: G.hero ? { id: G.hero.id, charge: Math.round(G.hero.charge * 100) / 100 } : null,
     pets: G.pets.map(p => ({ left: p.left, col: p.col })),
     lastStand: G.lastStand,
@@ -2549,10 +2864,15 @@ function applyRun(s) {
     for (let c = 0; c < COLS; c++) {
       const v = s.grid[r][c];
       if (!!v !== mask[r][c]) throw new Error('saved board does not match level');
-      g2[r][c] = v ? mkCell(v[0], v[1], r, c) : null;
+      if (!v) { g2[r][c] = null; continue; }
+      const x = g2[r][c] = mkCell(v[0], v[1], r, c);
+      if (isBlock(x)) x.hp = Math.max(1, Math.min(3, v[2] | 0 || 1));
+      if (v[3]) x.lock = true;
+      if (v[4] > 0) x.timer = v[4] | 0;
     }
   }
   grid = g2;
+  G.chocoHit = !!s.chocoHit;
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) jelly[r][c] = mask[r][c] ? (s.jelly[r][c] | 0) : 0;
   G.jellyLeft = jelly.flat().reduce((a, b) => a + b, 0);
   G.moves = s.moves; G.score = G.shown = s.score; G.hammer = s.hammer; G.shuffle = s.shuffle;
@@ -2705,11 +3025,17 @@ function render() {
   if (NOW > nextGlint && state !== 'intro') {
     nextGlint = NOW + 160 + Math.random() * 260;
     const gr0 = grid[rnd(ROWS)], x = gr0 && gr0[rnd(COLS)];
-    if (x && !isIng(x)) x.glint = NOW;
+    if (x && !isIng(x) && !isBlock(x)) x.glint = NOW;
   }
   ctx.save(); ctx.clip(clipPath);
-  const sel = selected && grid[selected.r] ? grid[selected.r][selected.c] : null;
-  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { const x = grid[r] && grid[r][c]; if (x) drawCell(x, x === sel); }
+  const sel = selected && grid[selected.r] ? grid[selected.r][selected.c] : null, fixedCells = [];
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+    const x = grid[r] && grid[r][c]; if (!x) continue;
+    if (isFixed(x)) fixedCells.push(x); else drawCell(x, x === sel);
+  }
+  // blockers and locked candies on top, so refilling candies slide behind them
+  for (const x of fixedCells) drawCell(x, x === sel);
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { const x = grid[r] && grid[r][c]; if (x && (x.lock || x.timer)) drawOverlay(x); }
   ctx.restore();
   drawFx();
   drawParticles(dt);
@@ -2737,11 +3063,29 @@ function drawJelly(r, c, n, jg) {
   ctx.beginPath(); ctx.arc(h * .55, h * .5, h * .08, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 }
+function drawOverlay(x) {
+  if (x.alpha <= .01 || x.scale <= .01) return;
+  ctx.save(); ctx.globalAlpha = Math.max(0, Math.min(1, x.alpha));
+  ctx.translate((x.x + .5) * T, (x.y + .5) * T);
+  const sq = x.sq || 0; if (sq) { const b = T * .3; ctx.translate(0, b); ctx.scale(1 + sq, 1 - sq); ctx.translate(0, -b); }
+  ctx.scale(x.scale, x.scale);
+  if (x.lock && SPR.lock) { const sz = SPR.lock.width / DPR; ctx.drawImage(SPR.lock, -sz / 2, -sz / 2, sz, sz); }
+  if (x.timer) {
+    const hot = x.timer <= 3, R = T * .2 * (hot ? 1 + .12 * Math.sin(NOW / 90) : 1);
+    ctx.beginPath(); ctx.arc(0, T * .03, R, 0, Math.PI * 2);
+    ctx.fillStyle = hot ? '#d9182e' : '#2b1630'; ctx.fill();
+    ctx.lineWidth = Math.max(1.5, T * .045); ctx.strokeStyle = '#fff'; ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.font = `900 ${Math.round(T * .25)}px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(x.timer, 0, T * .04);
+    star4(ctx, R * .78, -R * .78, T * (.075 + .03 * Math.sin(NOW / 70)), '#ffd84a');
+  }
+  ctx.restore();
+}
 function drawCell(x, isSel) {
   const spr = SPR[skey(x)];
   if (!spr || x.alpha <= .01 || x.scale <= .01) return;
   let s = x.scale, rot = 0, oy = 0;
-  const sq = x.sq || 0, special = x.type !== 'normal' && !isIng(x);
+  const sq = x.sq || 0, special = x.type !== 'normal' && !isIng(x) && !isBlock(x);
   if (hint && (hint[0] === x || hint[1] === x)) {
     const ph = (NOW - hintT) % 1500;
     if (ph < 600) { const k = Math.sin(ph / 600 * Math.PI); rot = Math.sin(ph / 600 * Math.PI * 4) * .2 * k; s *= 1 + .08 * k; }
@@ -2914,6 +3258,16 @@ function burst(x) {
       size: T * (.14 + Math.random() * .08), rot: 0, vr: (Math.random() - .5) * 6, color: '#fffbe0', star: true });
   }
 }
+function blockBurst(x, r, c) {
+  if (parts.length > 600) return;
+  const cx = (c + .5) * T, cy = (r + .5) * T;
+  const cols = x.type === 'choco' ? ['#8a4b22', '#c07a44', '#5a2a10'] : x.type === 'lock' ? ['#2a060e', '#7a1830', '#ff8aa6'] : ['#ffffff', '#dff0ff', '#a9d2f7'];
+  for (let i = 0; i < 9; i++) {
+    const a = Math.random() * Math.PI * 2, sp = T * (1.5 + Math.random() * 3);
+    parts.push({ x: cx, y: cy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - T * 1.5, g: T * 12, life: 0, max: .45 + Math.random() * .3,
+      size: T * (.09 + Math.random() * .09), rot: Math.random() * 6, vr: (Math.random() - .5) * 12, color: cols[i % 3] });
+  }
+}
 function sparkle(r, c, n, color) {
   if (parts.length > 600) return;
   const cx = (c + .5) * T, cy = (r + .5) * T;
@@ -2968,7 +3322,7 @@ function drawPops() {
 }
 
 /* ================= HUD ================= */
-function orderIcon(k) { return k[0] === 'c' ? 'n' + k.slice(1) : k === 'striped' ? 'v1' : k === 'wrapped' ? 'w5' : 'bomb'; }
+function orderIcon(k) { return /^c\d$/.test(k) ? 'n' + k.slice(1) : k === 'striped' ? 'v1' : k === 'wrapped' ? 'w5' : k === 'frost' || k === 'choco' ? k : 'bomb'; }
 function buildGoalUI() {
   const gi = $('goalItems'), t = G.L.goal.type;
   $('goalLbl').textContent = _t({ score: 'g.score', jelly: 'g.jelly', order: 'g.order', ingredients: 'g.ing' }[t]);
@@ -3124,11 +3478,20 @@ function chooseHero(id) {
   save.hero = id; persist();
   if (G && state === 'intro') { G.hero = makeHero(id); buildHeroBtn(); Music.play(id); }
 }
+function levelElementsHTML(L) {
+  const s = (L.obs || []).join(''), els = [];
+  if (/[123]/.test(s)) els.push(['f2', 'el.frost']);
+  if (s.includes('l')) els.push(['locked', 'el.lock']);
+  if (s.includes('c')) els.push(['choco', 'el.choco']);
+  if (L.bombs) els.push(['timer', 'el.bomb']);
+  return els.length ? `<div class="els">${els.map(([ic, k]) => `<div class="el"><img src="${icon(ic)}" alt=""><span>${_t(k)}</span></div>`).join('')}</div>` : '';
+}
 function showIntro() {
   const L = G.L;
   modal(`<h2>${_t('level', G.i + 1)}</h2>
     <div class="goaltxt">${goalText()}</div>
     <div class="goalicons">${goalIconsHTML()}</div>
+    ${levelElementsHTML(L)}
     <div class="mv">${_t('movesN', L.moves)}</div>
     <div class="targets">&#9733; ${fmt(L.stars[0])} &nbsp; &#9733;&#9733; ${fmt(L.stars[1])} &nbsp; &#9733;&#9733;&#9733; ${fmt(L.stars[2])}</div>
     <div class="goaltxt" style="margin-top:12px;font-size:16px;font-weight:900">${_t('sendOne')}</div>
@@ -3205,14 +3568,15 @@ function stepConfetti(t) {
   }
   if (!confetti.length) g.clearRect(0, 0, innerWidth, innerHeight);
 }
-function showLose(coins) {
+function showLose(coins, reason) {
   const t = G.L.goal.type;
   let why = '';
-  if (t === 'score') why = _t('why.score', fmt(G.L.stars[0] - G.score));
+  if (reason === 'bomb') why = _t('why.bomb');
+  else if (t === 'score') why = _t('why.score', fmt(G.L.stars[0] - G.score));
   else if (t === 'jelly') why = _t('why.jelly', G.jellyLeft);
   else if (t === 'order') why = _t('why.order') + G.orders.filter(o => o.got < o.n).map(o => `<img src="${icon(orderIcon(o.k))}" style="width:26px;vertical-align:middle" alt=""> <b>${o.n - o.got}</b>`).join(' &nbsp;');
   else why = _t('why.ing', G.ing.total - G.ing.delivered);
-  modal(`<h2>${_t('outOfMoves')}</h2><div class="sad">&#128546;</div><div class="why">${why}</div>
+  modal(`<h2>${_t(reason === 'bomb' ? 'bombOut' : 'outOfMoves')}</h2><div class="sad">&#128546;</div><div class="why">${why}</div>
     <div><span class="coins-won"><i class="coin"></i> ${_t('coinsWon', coins)}</span></div>
     <div class="tip">${_t('tipLose')}</div>
     <div class="row"><button class="btn orange" data-a="retry">${_t('tryAgain')}</button></div>
@@ -3304,7 +3668,7 @@ function showHeroesNews() {
 }
 function showHelp() {
   const ic = {};
-  ['h0', 'w3', 'bomb', 'jelly', 'cherry'].forEach(k => { ic[k] = `<img src="${icon(k)}" alt="">`; });
+  ['h0', 'w3', 'bomb', 'jelly', 'cherry', 'frost', 'locked', 'choco', 'timer'].forEach(k => { ic[k] = `<img src="${icon(k)}" alt="">`; });
   modal(`<h2>${_t('helpTitle')}</h2><div class="help">${_t('helpBody', ic)}</div>
     <div class="row"><button class="btn" data-a="ok">${_t('gotIt')}</button></div>`, {
     ok: () => { save.seenHelp = true; save.seenHeroes = true; persist(); closeModal(); },
@@ -3462,8 +3826,10 @@ function checkHint() {
 }
 
 /* ================= main loop & boot ================= */
+let HEADLESS = false; // automated balance runs: no drawing, virtual clock
 function frame(t) {
   requestAnimationFrame(frame);
+  if (HEADLESS) return; // automated balance runs drive the clock themselves via pump()
   NOW = t;
   try {
     stepTweens();
@@ -3529,6 +3895,9 @@ window.SweetSaga = {
   findGroups, pickAreas, HP, get jelly() { return jelly; }, noHero: () => { if (G) { G.hero = null; buildHeroBtn(); } },
   audio: { get state() { return { ctx: Snd.ctx && Snd.ctx.state, track: Music.track, playing: Music.playing, want: Music.want, gain: Music.bus && +Music.bus.gain.value.toFixed(3) }; }, ctx: () => Snd.ctx, bus: () => Music.bus, play: n => Music.play(n) },
   HFX, Aura,
+  // automated balance runs: skip drawing and step a virtual clock instead of waiting for real time
+  pump() { NOW += 1000; stepTweens(); },
+  set headless(v) { HEADLESS = !!v; },
 };
 init();
 })();

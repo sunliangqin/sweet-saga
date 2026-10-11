@@ -1484,7 +1484,7 @@ let cv, ctx, W = 0, H = 0, DPR = 1, T = 60, BX = 0, BY = 0, boardImg = null, boa
 let G = null, grid = [], mask = [], jelly = [], colTop = [], colBot = [], BND = { r0: 0, r1: 8, c0: 0, c1: 8 };
 let busy = false, state = 'idle', screen = 'title';
 let selected = null, drag = null, hammerMode = false, heroAim = false, hint = null, hintT = 0, lastAction = 0, shake = 0, lastFrame = 0, uid = 0;
-let jellyHit = [], boardIn = 0, nextGlint = 0, flying = 0;
+let jellyHit = [], boardIn = 0, flying = 0;
 let SPEED = 1;
 const fxList = [], parts = [], pops = [];
 
@@ -1533,7 +1533,7 @@ const isFixed = x => isBlock(x) || (!!x && !!x.lock);
 const plain = x => !!x && x.type === 'normal' && !x.lock && !x.timer;
 const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 const inB = (r, c) => r >= 0 && r < ROWS && c >= 0 && c < COLS && mask[r][c];
-function mkCell(color, type, r, c) { return { id: ++uid, color, type, x: c, y: r, scale: 1, alpha: 1, sq: 0, glint: -1e9 }; }
+function mkCell(color, type, r, c) { return { id: ++uid, color, type, x: c, y: r, scale: 1, alpha: 1, sq: 0 }; }
 function mkBlock(type, hp, r, c) { const x = mkCell(-1, type, r, c); x.hp = hp; return x; }
 const obsAt = (r, c) => (G.L.obs && G.L.obs[r] && G.L.obs[r][c]) || '.';
 function eachCell(fn) { for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) if (grid[r][c]) fn(grid[r][c], r, c); }
@@ -3073,11 +3073,6 @@ function render() {
     ctx.lineWidth = Math.max(2, T * .065); ctx.strokeStyle = `rgba(255,248,200,${.75 + .25 * pulse})`;
     ctx.stroke(); ctx.restore();
   }
-  if (NOW > nextGlint && state !== 'intro') {
-    nextGlint = NOW + 160 + Math.random() * 260;
-    const gr0 = grid[rnd(ROWS)], x = gr0 && gr0[rnd(COLS)];
-    if (x && !isIng(x) && !isBlock(x)) x.glint = NOW;
-  }
   ctx.save(); ctx.clip(clipPath);
   const sel = selected && grid[selected.r] ? grid[selected.r][selected.c] : null, fixedCells = [];
   for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
@@ -3161,17 +3156,6 @@ function drawCell(x, isSel) {
   ctx.scale(s, s);
   const sz = spr.width / DPR;
   ctx.drawImage(spr, -sz / 2, -sz / 2, sz, sz);
-  const gp = (NOW - x.glint) / 520;
-  if (gp >= 0 && gp < 1) {
-    ctx.save();
-    ctx.beginPath(); ctx.arc(0, 0, T * .4, 0, Math.PI * 2); ctx.clip();
-    ctx.rotate(-.65);
-    const bx = (-1 + 2 * gp) * T * .65, w = T * .16;
-    const g2 = ctx.createLinearGradient(bx - w, 0, bx + w, 0);
-    g2.addColorStop(0, 'rgba(255,255,255,0)'); g2.addColorStop(.5, 'rgba(255,255,255,.55)'); g2.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = g2; ctx.fillRect(bx - w, -T, w * 2, T * 2);
-    ctx.restore();
-  }
   ctx.restore();
   if (x.type === 'bomb' && x.alpha > .5) {
     ctx.save(); ctx.translate((x.x + .5) * T, (x.y + .5) * T); ctx.globalCompositeOperation = 'lighter';

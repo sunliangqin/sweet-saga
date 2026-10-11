@@ -168,8 +168,8 @@ button{font-family:inherit;-webkit-appearance:none;appearance:none}
 .help img{width:26px;height:26px;vertical-align:middle}
 
 /* ---------- heroes ---------- */
-.coin{display:inline-block;width:1em;height:1em;border-radius:50%;vertical-align:-.14em;background:radial-gradient(circle at 35% 30%,#fffbd0,#ffcf1a 50%,#d18d00);box-shadow:inset 0 0 0 .1em #a86c00}
-.mt-coins{background:rgba(60,10,90,.7);border:2px solid #ffd4f2;border-radius:999px;padding:4px 12px;font-weight:900;font-size:18px;white-space:nowrap}
+.candyc{display:inline-block;width:1.2em;height:1.2em;vertical-align:-.24em;background:var(--candy-icon) center/contain no-repeat}
+.mt-candy{background:rgba(60,10,90,.7);border:2px solid #ffd4f2;border-radius:999px;padding:4px 12px;font-weight:900;font-size:18px;white-space:nowrap}
 @media (max-width:480px){.mt-title{display:none}}
 #mapHeroes{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:8px;padding:8px 22px 8px 8px;font-size:22px;z-index:2}
 #mapHeroes:active{transform:translateX(-50%) translateY(4px)}
@@ -239,7 +239,7 @@ button{font-family:inherit;-webkit-appearance:none;appearance:none}
 .pick button.on{opacity:1;border-color:#ffcf1a;box-shadow:0 0 0 3px #e0338a,0 3px 8px rgba(0,0,0,.3);transform:scale(1.1)}
 .hpick-info{background:#fff;border-radius:14px;padding:6px 10px;margin-top:8px;font-size:13px;text-align:left;line-height:1.4;border:2px solid #f3c1e2}
 .hpick-info b{color:#e0338a}
-.coins-won{display:inline-block;margin-top:8px;background:#fff;border-radius:999px;padding:4px 14px;font-weight:900;font-size:18px;color:#a86c00;border:2px solid #ffcf1a}
+.candy-won{display:inline-block;margin-top:8px;background:#fff;border-radius:999px;padding:4px 14px;font-weight:900;font-size:18px;color:#c2187a;border:2px solid #ff9ad5}
 .tip{font-size:14px;margin-top:8px}
 
 /* ---------- polish: ambience, transitions, juice ---------- */
@@ -324,7 +324,7 @@ button{font-family:inherit;-webkit-appearance:none;appearance:none}
     <button class="rb small blue" id="mapHome" title="主菜单" aria-label="主菜单"><svg viewBox="0 0 24 24"><path d="M12 3 2 12h3v8h5v-5h4v5h5v-8h3z" fill="#fff"/></svg></button>
     <div class="mt-title">甜蜜传奇</div>
     <div class="mt-stars"><span>&#9733;</span> <b id="totalStars">0</b></div>
-    <div class="mt-coins"><i class="coin"></i> <b class="coinCount">0</b></div>
+    <div class="mt-candy" title="糖果罐"><i class="candyc"></i> <b class="candyCount">0</b></div>
     <button class="rb small" id="mapSound" title="声音" aria-label="声音"></button>
   </div>
   <button class="btn pink" id="mapHeroes"><img id="mapHeroImg" alt="">英雄</button>
@@ -332,13 +332,13 @@ button{font-family:inherit;-webkit-appearance:none;appearance:none}
 
 <div id="heroScreen" class="screen hidden">
   <div id="heroScroll"><div class="hs-wrap">
-    <div class="hs-intro">每关可以派出<b>一位英雄</b>助战。每位英雄有两个技能&mdash;&mdash;用玩游戏赚到的金币来升级它们。</div>
+    <div class="hs-intro">每关可以派出<b>一位英雄</b>助战。每位英雄有两个技能&mdash;&mdash;用消除的糖果来升级它们。</div>
     <div id="heroGrid"></div>
   </div></div>
   <div id="heroTop">
     <button class="rb small blue" id="heroBack" title="返回" aria-label="返回"><svg viewBox="0 0 24 24"><path d="M15 4 7 12l8 8" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     <div class="mt-title">英雄</div>
-    <div class="mt-coins"><i class="coin"></i> <b class="coinCount">0</b></div>
+    <div class="mt-candy" title="糖果罐"><i class="candyc"></i> <b class="candyCount">0</b></div>
   </div>
 </div>
 
@@ -567,7 +567,7 @@ LEVELS.forEach(L => { if (L.goal.type === 'order') L.goal.items.forEach(it => { 
 
 /* ================= heroes =================
    One hero joins each level. Each hero has an active skill (charged by crushing candies,
-   tap to use) and a passive skill. Both level 1..5, upgraded with coins earned by playing. */
+   tap to use) and a passive skill. Both level 1..5, upgraded with the candies crushed while playing. */
 const HP = {
   slamArea: [1, 1, 1, 1, 1], slamRows: [0, 0, 1, 1, 1], slamCols: [0, 0, 0, 0, 0], lastStand: [1, 1, 2, 2, 2], lsSmash: [0, 2, 2, 3, 4],
   meteors: [2, 3, 4, 5, 6], spark: [20, 35, 50, 65, 80],
@@ -576,7 +576,9 @@ const HP = {
   arrows: [2, 3, 4, 5, 6], quick: [10, 18, 26, 34, 42],
   bears: [2, 2, 3, 3, 4], bearMoves: [2, 3, 3, 4, 5], pet: [2, 3, 4, 5, 6],
 };
-const UPG = [150, 300, 500, 800];
+// ~470 candies are crushed per level cleared (bot measurement), so maxing one hero takes ~45+ levels
+const UPG = [1000, 2000, 3200, 5000];
+const COIN_TO_CANDY = 6.5; // old coin prices were [150, 300, 500, 800]
 const MAXLV = 5;
 // cost = candies to crush to charge the tap skill, per tap-skill level (some upgrades charge faster instead of hitting harder)
 // voice: [speech pitch, speech rate, fallback shout base frequency in Hz]
@@ -627,7 +629,7 @@ const STR = {
   level: n => `第 ${n} 关`, 'gt.score': n => `达到 <b>${n}</b> 分！`, 'gt.jelly': '清除所有<b>果冻</b>！',
   'gt.order': '完成收集目标！', 'gt.ing': n => `把 <b>${n}</b> 个食材运送到底部！`, movesN: n => `<b>${n}</b> 步`,
   sendOne: '派出一位英雄助战：', playBang: '开始！', upgradeHeroes: '升级英雄', map: '地图',
-  finalScore: '得分', newBest: '新纪录！', coinsWon: n => `+${n} 金币`, allDone: '恭喜你通关了所有关卡！&#127852;',
+  finalScore: '得分', newBest: '新纪录！', candyWon: n => `+${fmt(n)} 颗糖果`, allDone: '恭喜你通关了所有关卡！&#127852;',
   next: '下一关 &#9654;', replay: '重玩', outOfMoves: '步数用完了！',
   'why.score': n => `还差 <b>${n}</b> 分。`, 'why.jelly': n => `还剩 <b>${n}</b> 块果冻没有清除。`,
   'why.order': '还需收集：', 'why.ing': n => `还有 <b>${n}</b> 个食材没有运到。`,
@@ -642,7 +644,7 @@ const STR = {
     &#8226; 后面的关卡会出现障碍：${ic.frost} 糖霜（在旁边消除剥掉一层）、${ic.locked} 甘草锁（参与消除即可解锁）、${ic.choco} 巧克力（不处理会蔓延）、${ic.timer} 糖果炸弹（倒计时归零前要消除）。<br>
     &#8226; 每关免费道具：棒棒糖锤子和洗牌。<br>
     &#8226; <b>英雄：</b>每关派出一位英雄。消除糖果会为英雄充能&mdash;&mdash;英雄发光时点击它即可释放技能。每位英雄还有一个常驻的被动技能。<br>
-    &#8226; 玩关卡赚取金币，把英雄的两个技能升到最高 5 级（永远没有内购）。<br>
+    &#8226; 消除的每一颗糖果都会存进糖果罐，用来把英雄的两个技能升到最高 5 级（永远没有内购）。<br>
     &#8226; 进度和未完成的关卡会自动保存在本设备上。`,
   leaveTitle: '离开关卡？', leaveText: '棋盘已保存&mdash;&mdash;稍后可以继续。', keepPlaying: '继续游戏', restartLevel: '重新开始本关',
   unfinished: '本关有一局未完成的游戏。', 'continue': '继续', startOver: '重新开始',
@@ -650,12 +652,12 @@ const STR = {
   tapSkill: '主动', alwaysOn: '被动', charges: n => `消除 ${n} 颗糖果即可充满。`, chargeNext: n => `（充能更快：只需 ${n} 颗糖果）`, maxLevel: '已满级',
   levelN: n => `${n} 级：`, upgradeTo: n => `升到 ${n} 级`, levelTitle: n => `${n} 级`,
   selectedCheck: '已选择 &#10003;', sendHero: '派出这位英雄', close: '关闭',
-  youHave: n => `你有 <i class="coin"></i> <b>${n}</b> 金币 &middot; 玩关卡可以赚取更多`,
+  youHave: n => `糖果罐里有 <i class="candyc"></i> <b>${n}</b> 颗糖果 &middot; 消除糖果就能攒更多`,
   newsTitle: '英雄登场！', meetHeroes: '认识英雄', later: '稍后',
   newsBody: `&#8226; 每关可以派出<b>一位英雄</b>。<br>
     &#8226; 每消除一颗糖果都会为英雄充能&mdash;&mdash;英雄发光时点击它即可释放技能。<br>
     &#8226; 每位英雄还有一个常驻的被动技能。<br>
-    &#8226; 玩关卡赚取金币，把两个技能都升到 5 级。`,
+    &#8226; 消除的糖果会存进糖果罐，用来把两个技能都升到 5 级。`,
   'h.warrior.name': '姜饼爵士', 'h.warrior.cls': '战士', 'h.warrior.trait': '高生命、高防御的前排战士，擅长近身猛击，永不言败。',
   'h.warrior.a': '盾牌猛击', 'h.warrior.p': '背水一战',
   'h.warrior.ad': lv => {
@@ -701,7 +703,7 @@ const clsLabel = H => H.cls;
 
 /* ================= local save (localStorage) ================= */
 const SAVE_KEY = 'sweetSaga.save.v1';
-const defaultSave = () => ({ unlocked: 1, stars: {}, best: {}, mute: false, seenHelp: false, run: null, coins: 100, hero: 'warrior', heroLv: {}, seenHeroes: false });
+const defaultSave = () => ({ unlocked: 1, stars: {}, best: {}, mute: false, seenHelp: false, run: null, candy: 0, hero: 'warrior', heroLv: {}, seenHeroes: false });
 let save = loadSave();
 function heroLv(id) {
   let l = save.heroLv[id];
@@ -712,7 +714,9 @@ function heroLv(id) {
 if (!HERO[save.hero]) save.hero = 'warrior';
 if (!save.heroLv || typeof save.heroLv !== 'object') save.heroLv = {};
 HERO_LIST.forEach(h => heroLv(h.id));
-save.coins = Math.max(0, save.coins | 0);
+// The old coin currency is gone: coins left in older saves become candies at the upgrade-price ratio.
+if ('coins' in save) { save.candy = (save.candy | 0) + Math.round(Math.max(0, save.coins | 0) * COIN_TO_CANDY); delete save.coins; }
+save.candy = Math.max(0, save.candy | 0);
 // saves from before new levels were added stopped unlocking at the old last level
 {
   const cleared = Object.keys(save.stars || {}).filter(k => save.stars[k] > 0).map(Number).filter(n => n > 0);
@@ -821,7 +825,7 @@ const Snd = {
   unlock() { this.tone(520, .07, { type: 'square', vol: .06 }); this.tone(880, .16, { type: 'triangle', vol: .13, at: .05 }); },
   ooze() { this.tone(170, .3, { vol: .2, to: 85 }); this.noise(.22, { vol: .08, freq: 420, to: 180 }); },
   fuse() { this.tone(1200, .05, { type: 'square', vol: .05 }); this.tone(900, .07, { type: 'square', vol: .05, at: .07 }); },
-  coin() { this.tone(1319, .08, { type: 'square', vol: .07 }); this.tone(1976, .25, { type: 'square', vol: .07, at: .07 }); },
+  ding() { this.tone(1319, .08, { type: 'square', vol: .07 }); this.tone(1976, .25, { type: 'square', vol: .07, at: .07 }); },
   levelup() { [523, 784, 1047, 1568, 2093].forEach((f, i) => this.tone(f, .25, { type: 'triangle', vol: .18, at: i * .07 })); },
   // Vocal-ish "hya!" (sawtooth through 'a'-vowel formants) used when no Chinese speech voice exists.
   shout(f) {
@@ -1788,6 +1792,8 @@ async function executeBlast(b, creations) {
   }
   b.acts.forEach(a => typeof a === 'string' ? countOrder(a) : countOrder(a.k, a.r, a.c));
   if (!b.noCharge) chargeHero(n);
+  // every crushed candy goes into the candy jar that pays for hero upgrades
+  if (n > 0 && G) { G.crushed = (G.crushed || 0) + n; save.candy += n; }
   let made = 0;
   for (const cr of creations) {
     const r = kr(cr.k), c = kc(cr.k);
@@ -2086,8 +2092,6 @@ async function win() {
   const L = G.L, n = G.i + 1;
   const stars = G.score >= L.stars[2] ? 3 : G.score >= L.stars[1] ? 2 : 1;
   const newBest = G.score > (save.best[n] || 0);
-  const coins = 20 + stars * 10 + (save.stars[n] ? 0 : 30);
-  save.coins += coins;
   save.stars[n] = Math.max(save.stars[n] || 0, stars);
   if (newBest) save.best[n] = G.score;
   save.unlocked = Math.max(save.unlocked, Math.min(LEVELS.length, n + 1));
@@ -2095,16 +2099,16 @@ async function win() {
   state = 'over';
   Music.duck(.3);
   Snd.win();
-  showWin(stars, newBest, coins);
+  showWin(stars, newBest, G.crushed || 0);
 }
 async function lose(reason) {
   state = 'over'; busy = true; selected = null; hint = null; hammerMode = false; heroAim = false;
   clearRun(); hideToast(); updateHUD();
-  save.coins += 5; persist();
+  persist();
   await wait(500);
   Music.duck(.3);
   Snd.lose();
-  showLose(5, reason);
+  showLose(G.crushed || 0, reason);
 }
 async function sugarCrush() {
   const specials = () => { const s = []; eachCell((x, r, c) => { if (isSpecial(x) || x.type === 'bomb' || x.type === 'armed') s.push([r, c]); }); return s; };
@@ -2866,7 +2870,7 @@ function saveRun() {
     chocoHit: !!G.chocoHit,
     hero: G.hero ? { id: G.hero.id, charge: Math.round(G.hero.charge * 100) / 100 } : null,
     pets: G.pets.map(p => ({ left: p.left, col: p.col })),
-    lastStand: G.lastStand,
+    lastStand: G.lastStand, crushed: G.crushed || 0,
   };
   persist();
 }
@@ -2894,7 +2898,7 @@ function applyRun(s) {
   if (G.ing && s.ing) Object.assign(G.ing, s.ing);
   G.hero = s.hero && HERO[s.hero.id] ? makeHero(s.hero.id, +s.hero.charge || 0) : makeHero(save.hero);
   G.pets = Array.isArray(s.pets) ? s.pets.filter(p => p && p.left > 0).map(p => ({ left: p.left | 0, col: Math.abs(p.col | 0) % 3 })) : [];
-  G.lastStand = !!s.lastStand;
+  G.lastStand = !!s.lastStand; G.crushed = Math.max(0, s.crushed | 0);
 }
 
 /* ================= level setup ================= */
@@ -2907,7 +2911,7 @@ function startLevel(i, resume) {
     i, L, moves: L.moves, score: 0, shown: 0, colors: L.colors, jellyLeft: 0, hammer: 3, shuffle: 2,
     orders: L.goal.type === 'order' ? L.goal.items.map(it => ({ k: it.k, n: it.n, got: 0 })) : null,
     ing: L.goal.type === 'ingredients' ? { total: L.goal.n, spawned: 0, delivered: 0, since: 0, fillSpawned: false } : null,
-    hero: makeHero(save.hero), pets: [], lastStand: false,
+    hero: makeHero(save.hero), pets: [], lastStand: false, crushed: 0,
   };
   mask = []; jelly = []; jellyHit = [];
   for (let r = 0; r < ROWS; r++) {
@@ -3523,14 +3527,14 @@ function showIntro() {
     $('hpInfo').innerHTML = heroInfoHTML(b.dataset.h);
   }));
 }
-function showWin(stars, newBest, coins) {
+function showWin(stars, newBest, candy) {
   const last = G.i + 1 >= LEVELS.length;
   modal(`<h2>${_t('level', G.i + 1)}</h2>
     <div class="sub">${['', _t('w.sweet'), _t('w.tasty'), _t('w.delicious')][stars]}</div>
     <div class="stars"><span class="st" id="st0">&#9733;</span><span class="st" id="st1">&#9733;</span><span class="st" id="st2">&#9733;</span></div>
     <div class="final">${_t('finalScore')} <b>${fmt(G.score)}</b></div>
     ${newBest ? `<div class="best">${_t('newBest')}</div>` : ''}
-    <div><span class="coins-won"><i class="coin"></i> <span id="coinWon">${_t('coinsWon', 0)}</span></span></div>
+    <div><span class="candy-won"><i class="candyc"></i> <span id="candyWon">${_t('candyWon', 0)}</span></span></div>
     ${last ? `<div class="goaltxt">${_t('allDone')}</div>` : ''}
     <div class="row"><button class="btn" data-a="next">${last ? _t('map') : _t('next')}</button></div>
     <div class="row"><button class="btn small orange" data-a="replay">${_t('replay')}</button><button class="btn small pink" data-a="heroes">${_t('heroes')}</button><button class="btn small blue" data-a="map">${_t('map')}</button></div>`, {
@@ -3541,7 +3545,7 @@ function showWin(stars, newBest, coins) {
   });
   startConfetti(110); setTimeout(() => startConfetti(70), 650);
   for (let i = 0; i < stars; i++) setTimeout(() => { const el = $('st' + i); if (el) { el.classList.add('on'); Snd.star(i); } }, 350 + i * 420);
-  setTimeout(() => { Snd.coin(); countUp($('coinWon'), coins, 700, v => _t('coinsWon', v)); }, 350 + stars * 420);
+  setTimeout(() => { Snd.ding(); countUp($('candyWon'), candy, 700, v => _t('candyWon', v)); }, 350 + stars * 420);
 }
 function countUp(el, to, ms, show) {
   if (!el) return;
@@ -3582,7 +3586,7 @@ function stepConfetti(t) {
   }
   if (!confetti.length) g.clearRect(0, 0, innerWidth, innerHeight);
 }
-function showLose(coins, reason) {
+function showLose(candy, reason) {
   const t = G.L.goal.type;
   let why = '';
   if (reason === 'bomb') why = _t('why.bomb');
@@ -3591,7 +3595,7 @@ function showLose(coins, reason) {
   else if (t === 'order') why = _t('why.order') + G.orders.filter(o => o.got < o.n).map(o => `<img src="${icon(orderIcon(o.k))}" style="width:26px;vertical-align:middle" alt=""> <b>${o.n - o.got}</b>`).join(' &nbsp;');
   else why = _t('why.ing', G.ing.total - G.ing.delivered);
   modal(`<h2>${_t(reason === 'bomb' ? 'bombOut' : 'outOfMoves')}</h2><div class="sad">&#128546;</div><div class="why">${why}</div>
-    <div><span class="coins-won"><i class="coin"></i> ${_t('coinsWon', coins)}</span></div>
+    <div><span class="candy-won"><i class="candyc"></i> ${_t('candyWon', candy)}</span></div>
     <div class="tip">${_t('tipLose')}</div>
     <div class="row"><button class="btn orange" data-a="retry">${_t('tryAgain')}</button></div>
     <div class="row"><button class="btn small pink" data-a="heroes">${_t('heroes')}</button><button class="btn small blue" data-a="map">${_t('map')}</button></div>`, {
@@ -3603,8 +3607,8 @@ function showLose(coins, reason) {
 
 /* ================= heroes screen ================= */
 let heroFrom = 'map';
-function canUpgrade(id, which) { const lv = heroLv(id)[which]; return lv < MAXLV && save.coins >= UPG[lv - 1]; }
-function refreshCoins() { document.querySelectorAll('.coinCount').forEach(e => { e.textContent = fmt(save.coins); }); }
+function canUpgrade(id, which) { const lv = heroLv(id)[which]; return lv < MAXLV && save.candy >= UPG[lv - 1]; }
+function refreshCandy() { document.querySelectorAll('.candyCount').forEach(e => { e.textContent = fmt(save.candy); }); }
 function openHeroes(from) {
   heroFrom = from || 'map';
   closeModal(); hideToast();
@@ -3619,7 +3623,7 @@ function closeHeroes() {
   else goMap();
 }
 function renderHeroes() {
-  refreshCoins();
+  refreshCandy();
   const box = $('heroGrid');
   box.innerHTML = HERO_LIST.map(H => {
     const l = heroLv(H.id), sel = H.id === save.hero, up = canUpgrade(H.id, 'a') || canUpgrade(H.id, 'p');
@@ -3638,7 +3642,7 @@ function skillHTML(H, which) {
     ${which === 'a' ? `<div class="hd-cost">${_t('charges', costAt(H, lv))}</div>` : ''}
     ${max ? `<div class="sk-row"><span class="sk-max">${_t('maxLevel')}</span></div>`
       : `<div class="sk-next">${_t('levelN', lv + 1)}${S.desc(lv + 1)}${which === 'a' && costAt(H, lv + 1) !== costAt(H, lv) ? _t('chargeNext', costAt(H, lv + 1)) : ''}</div>
-         <div class="sk-row"><span class="hd-cost">${_t('upgradeTo', lv + 1)}</span><button class="btn up" data-a="up${which}" ${save.coins < cost ? 'disabled' : ''}><i class="coin"></i> ${cost}</button></div>`}
+         <div class="sk-row"><span class="hd-cost">${_t('upgradeTo', lv + 1)}</span><button class="btn up" data-a="up${which}" ${save.candy < cost ? 'disabled' : ''}><i class="candyc"></i> ${fmt(cost)}</button></div>`}
   </div>`;
 }
 function heroDetail(id, noAnim) {
@@ -3648,7 +3652,7 @@ function heroDetail(id, noAnim) {
     <div class="hd-head"><img src="${heroImg(id)}" alt=""><div><div class="hc">${clsLabel(H)}</div><div class="ht">${H.trait}</div><div class="hd-theme">&#9835; ${_t('theme.' + id)}</div></div></div>
     ${skillHTML(H, 'a')}${skillHTML(H, 'p')}
     <div class="row">${sel ? `<button class="btn small" disabled>${_t('selectedCheck')}</button>` : `<button class="btn small" data-a="pick">${_t('sendHero')}</button>`}<button class="btn small blue" data-a="close">${_t('close')}</button></div>
-    <div class="hd-cost" style="margin-top:8px">${_t('youHave', fmt(save.coins))}</div>`, {
+    <div class="hd-cost" style="margin-top:8px">${_t('youHave', fmt(save.candy))}</div>`, {
     upa: () => upgrade(id, 'a'), upp: () => upgrade(id, 'p'),
     pick: () => { chooseHero(id); renderHeroes(); heroDetail(id, true); },
     close: () => { closeModal(); Music.play(musicForScreen()); },
@@ -3657,8 +3661,8 @@ function heroDetail(id, noAnim) {
 }
 function upgrade(id, which) {
   const l = heroLv(id), lv = l[which];
-  if (lv >= MAXLV || save.coins < UPG[lv - 1]) { Snd.play('bad'); return; }
-  save.coins -= UPG[lv - 1]; l[which] = lv + 1; persist();
+  if (lv >= MAXLV || save.candy < UPG[lv - 1]) { Snd.play('bad'); return; }
+  save.candy -= UPG[lv - 1]; l[which] = lv + 1; persist();
   Snd.levelup();
   renderHeroes(); heroDetail(id, true);
   showToastAny(_t('toast.upgraded', HERO[id].name, which === 'a' ? HERO[id].active.name : HERO[id].passive.name, lv + 1));
@@ -3759,7 +3763,7 @@ function buildMap() {
   html += `<img class="avatar" src="${heroImg(save.hero)}" alt="" style="left:${pts[curI].x - 24}px;top:${pts[curI].y - 116}px">`;
   inner.innerHTML = html;
   $('totalStars').textContent = total + ' / ' + N * 3;
-  refreshCoins();
+  refreshCandy();
   $('mapHeroImg').src = heroImg(save.hero);
   inner.querySelectorAll('.node').forEach(b => b.addEventListener('click', () => {
     const i = +b.dataset.l; Snd.init(); Snd.click();
@@ -3854,6 +3858,7 @@ function frame(t) {
   } catch (e) { console.error(e); }
 }
 function init() {
+  document.documentElement.style.setProperty('--candy-icon', `url(${icon('w1')})`);
   cv = $('cv'); ctx = cv.getContext('2d');
   cv.addEventListener('pointerdown', onDown);
   cv.addEventListener('pointermove', onMove);

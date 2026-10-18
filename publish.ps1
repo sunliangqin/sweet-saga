@@ -1,31 +1,30 @@
-# Publishes the current index.html to the public GitHub Pages site.
-#   Source (private): https://github.com/sunliangqin/sweet-saga
-#   Site   (public) : https://github.com/sunliangqin/sweet-saga-web  ->  https://sunliangqin.github.io/sweet-saga-web/
-# Usage:  .\publish.ps1            (or  .\publish.ps1 -Message "Describe the update")
-param([string]$Message = "Publish $(Get-Date -Format 'yyyy-MM-dd HH:mm')")
+# Publishes committed changes on main to this repository's GitHub Pages site.
+# Usage: .\publish.ps1
+[CmdletBinding()]
+param()
 $ErrorActionPreference = 'Stop'
 
-$gh = (Get-Command gh -ErrorAction SilentlyContinue).Source
-if (-not $gh) { $gh = 'C:\Program Files\GitHub CLI\gh.exe' }
-$site = 'sunliangqin/sweet-saga-web'
-$tmp = Join-Path $env:TEMP ('sweet-saga-web-' + [guid]::NewGuid().ToString('N'))
+$gh = (Get-Command gh -ErrorAction Stop).Source
+$branch = git -C $PSScriptRoot branch --show-current
+if ($LASTEXITCODE -ne 0) { throw 'Unable to read the current Git branch.' }
+if ($branch -ne 'main') { throw 'Switch to main before publishing.' }
+$changes = git -C $PSScriptRoot status --porcelain
+if ($LASTEXITCODE -ne 0) { throw 'Unable to check the Git working tree.' }
+if ($changes) { throw 'Commit or stash your changes before publishing. Only committed changes are published.' }
+
 # Use the personal account's gh login only for this script; the active gh account and global git config stay untouched.
 $helper = "!'" + ($gh -replace '\\', '/') + "' auth git-credential"
-$env:GH_TOKEN = & $gh auth token --user sunliangqin
+$previousToken = $env:GH_TOKEN
 try {
-  git -c credential.helper= -c "credential.helper=$helper" clone --quiet --depth 1 "https://github.com/$site.git" $tmp
-  Copy-Item (Join-Path $PSScriptRoot 'index.html') (Join-Path $tmp 'index.html') -Force
-  Push-Location $tmp
-  try {
-    git add index.html
-    if (git status --porcelain) {
-      git commit --quiet -m $Message
-      git -c credential.helper= -c "credential.helper=$helper" push --quiet
-      'Published. GitHub Pages usually refreshes within a minute.'
-    } else { 'The site is already up to date.' }
-  } finally { Pop-Location }
+  $token = & $gh auth token --hostname github.com --user sunliangqin
+  if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($token)) {
+    throw 'Unable to authenticate as sunliangqin. Run gh auth login first.'
+  }
+  $env:GH_TOKEN = $token
+  git -C $PSScriptRoot -c credential.helper= -c "credential.helper=$helper" push 'https://github.com/sunliangqin/sweet-saga.git' 'main:main'
+  if ($LASTEXITCODE -ne 0) { throw 'Publishing failed: Git push was unsuccessful.' }
+  'Push complete. GitHub Pages deploys main automatically; allow a few minutes for updates.'
 } finally {
-  Remove-Item Env:GH_TOKEN -ErrorAction SilentlyContinue
-  Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
+  $env:GH_TOKEN = $previousToken
 }
-'Play: https://sunliangqin.github.io/sweet-saga-web/'
+'Play: https://sunliangqin.github.io/sweet-saga/'

@@ -19,7 +19,7 @@ A single-file HTML match-3 game (Candy Crush Saga style). Touch friendly, no ads
 
 ## 在线试玩 / Play online
 
-https://sunliangqin.github.io/sweet-saga-web/
+https://sunliangqin.github.io/sweet-saga/
 
 ## 运行 / Run
 
@@ -29,10 +29,18 @@ Open `index.html` in any modern browser — no build step or server needed.
 
 ## 发布 / Publish
 
-本仓库为私有仓库；网页通过公开仓库 [sweet-saga-web](https://github.com/sunliangqin/sweet-saga-web) 的 GitHub Pages 发布。修改 `index.html` 并提交后，运行：
+网页直接通过本仓库的 GitHub Pages 发布，发布源为 `main` 分支的根目录。每次推送到 `main` 后，网站会自动更新，无需单独的网页仓库。
 
-This repo is private; the page is served by GitHub Pages from the public repo `sunliangqin/sweet-saga-web`. After committing changes to `index.html`, run:
+GitHub Pages serves this repository directly from the root of `main`. Every push to `main` automatically updates the site; no separate web repository is needed.
+
+修改并提交后，在 `main` 分支运行以下脚本，将已提交的更改推送到本仓库：
+
+After committing your changes on `main`, run the script to push those commits to this repository:
 
 ```powershell
-.\publish.ps1 -Message "描述这次更新"
+.\publish.ps1
 ```
+
+脚本不会自动创建提交；旧的 `-Message` 参数已不再使用。GitHub Pages 通常需要几分钟完成部署。
+
+The script does not create commits; the old `-Message` parameter is no longer used. Allow a few minutes for GitHub Pages to finish deploying.

@@ -68,6 +68,7 @@ button{font-family:inherit;-webkit-appearance:none;appearance:none}
 .node .ns{position:absolute;top:58px;left:50%;transform:translateX(-50%);font-size:18px;white-space:nowrap;color:#ffd700;-webkit-text-stroke:1px #8a5a00;letter-spacing:-1px;text-shadow:none}
 .node .ns i{color:rgba(255,255,255,.6);font-style:normal;-webkit-text-stroke:1px rgba(120,60,120,.5)}
 .node .you{position:absolute;top:-30px;left:50%;transform:translateX(-50%);font-size:12px;background:#fff;color:#c2187a;border-radius:8px;padding:2px 6px;white-space:nowrap;text-shadow:none}
+.node .medal{position:absolute;right:-10px;top:-10px;border:2px solid #fff;border-radius:50%;background:#ffe36b;color:#8a4f00;font-size:17px;width:25px;height:25px;line-height:21px;text-shadow:none}
 @keyframes bob{from{transform:translateY(0) scale(1)}to{transform:translateY(-8px) scale(1.07)}}
 #mapTop{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;gap:10px;
  padding:calc(8px + env(safe-area-inset-top)) 12px 18px;background:linear-gradient(180deg,rgba(90,20,120,.85),rgba(90,20,120,0));pointer-events:none}
@@ -182,14 +183,17 @@ button{font-family:inherit;-webkit-appearance:none;appearance:none}
 @keyframes cardIn{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
 .help{font-size:14px;text-align:left;line-height:1.45;margin-top:4px}
 .help img{width:26px;height:26px;vertical-align:middle}
+.challenge{margin:10px 0;padding:8px 10px;border:2px solid #e9ba55;border-radius:12px;background:#fff5cf;color:#845017;font-size:14px;line-height:1.4}
+.challenge-hint{font-size:10px;line-height:1.3;margin-top:3px;color:#ffed9b}
 
 /* ---------- heroes ---------- */
 .candyc{display:inline-block;width:1.2em;height:1.2em;vertical-align:-.24em;background:var(--candy-icon) center/contain no-repeat}
 .mt-candy{background:rgba(60,10,90,.7);border:2px solid #ffd4f2;border-radius:999px;padding:4px 12px;font-weight:900;font-size:18px;white-space:nowrap}
 @media (max-width:480px){.mt-title{display:none}}
-#mapHeroes{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:8px;padding:8px 22px 8px 8px;font-size:22px;z-index:2}
-#mapHeroes:active{transform:translateX(-50%) translateY(4px)}
+#mapActions{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom));display:flex;align-items:center;gap:10px;max-width:calc(100% - 24px);z-index:2}
+#mapHeroes{display:flex;align-items:center;gap:8px;padding:8px 18px 8px 8px;font-size:20px}
 #mapHeroes img{width:44px;height:44px;border-radius:50%;border:2px solid #fff}
+#mapStreak{font-size:14px;padding:12px;white-space:nowrap}
 .hero{--hs:70px;--hc:#ff4fa8;position:relative;z-index:-1;width:var(--hs);height:var(--hs);border:0;padding:0;background:none;pointer-events:auto;touch-action:manipulation;cursor:pointer;flex:0 0 auto;transition:transform .08s}
 .hero:active{transform:translateY(3px)}
 .hero img{position:absolute;left:9%;top:9%;width:82%;height:82%;border-radius:50%;box-shadow:0 3px 6px rgba(0,0,0,.35)}
@@ -239,8 +243,8 @@ button{font-family:inherit;-webkit-appearance:none;appearance:none}
 .sk-name{font-weight:900;font-size:17px}
 .sk-type{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#fff;background:#e0338a;border-radius:999px;padding:2px 7px;margin-left:4px;vertical-align:2px}
 .sk-type.pas{background:#2e9bff}
-.pips{white-space:nowrap}
-.pips i{display:inline-block;width:11px;height:11px;border-radius:50%;background:#f0d3e6;margin-left:3px;box-shadow:inset 0 0 0 1px #d9a8c8}
+.pips{display:grid;grid-template-columns:repeat(5,9px);gap:3px;flex:0 0 auto}
+.pips i{display:block;width:9px;height:9px;border-radius:50%;background:#f0d3e6;box-shadow:inset 0 0 0 1px #d9a8c8}
 .pips i.on{background:#ff4fa8;box-shadow:none}
 .sk-desc{font-size:14px;margin:6px 0 2px;line-height:1.35}
 .sk-next{font-size:13px;color:#1f8a2a;line-height:1.35}
@@ -344,12 +348,15 @@ button{font-family:inherit;-webkit-appearance:none;appearance:none}
     <div class="mt-candy" title="糖果罐"><i class="candyc"></i> <b class="candyCount">0</b></div>
     <button class="rb small" id="mapSound" title="设置" aria-label="设置"></button>
   </div>
-  <button class="btn pink" id="mapHeroes"><img id="mapHeroImg" alt="">英雄</button>
+  <div id="mapActions">
+    <button class="btn pink" id="mapHeroes"><img id="mapHeroImg" alt="">英雄</button>
+    <button class="btn orange" id="mapStreak"></button>
+  </div>
 </div>
 
 <div id="heroScreen" class="screen hidden">
   <div id="heroScroll"><div class="hs-wrap">
-    <div class="hs-intro">每关可以派出<b>一位英雄</b>助战。每位英雄有两个技能&mdash;&mdash;用消除的糖果来升级它们。</div>
+    <div class="hs-intro">每关可以派出<b>一位英雄</b>助战。主动和被动技能各可升至 <b>10 级</b>&mdash;&mdash;用消除的糖果来升级它们。</div>
     <div id="heroGrid"></div>
   </div></div>
   <div id="heroTop">
@@ -363,7 +370,7 @@ button{font-family:inherit;-webkit-appearance:none;appearance:none}
   <canvas id="cv"></canvas>
   <div id="hud">
     <div class="panel" id="movesBox"><div class="lbl">步数</div><div id="moves">0</div></div>
-    <div class="panel" id="goalBox"><div class="lbl" id="goalLbl">目标</div><div id="goalItems"></div></div>
+    <div class="panel" id="goalBox"><div class="lbl" id="goalLbl">目标</div><div id="goalItems"></div><div class="challenge-hint" id="challengeHint"></div></div>
     <div class="panel" id="scoreBox"><div class="lbl">分数</div><div id="score">0</div>
       <div class="starbar"><div id="starFill"></div><i class="sbs" id="sb0">&#9733;</i><i class="sbs" id="sb1">&#9733;</i><i class="sbs" id="sb2">&#9733;</i></div></div>
   </div>
@@ -411,6 +418,10 @@ function rr(g, x, y, w, h, r) {
 }
 function srand(seed) { let s = (seed % 2147483647) || 1; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
 function shuffleArr(a) { for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function skillLines(count, at, size) {
+  const start = Math.max(0, Math.min(size - count, at - Math.floor(count / 2)));
+  return Array.from({ length: count }, (_, i) => start + i);
+}
 
 /* ================= levels =================
    shape: '.' = no cell, 'x' = cell, 'j' = jelly, 'J' = double jelly
@@ -577,35 +588,233 @@ const LEVELS = [
     shape: ['jjjjjjjjj', 'jxxxxxxxj', 'jxjjjjjxj', 'jxjxxxjxj', 'jxjxxxjxj', 'jxjxxxjxj', 'jxjjjjjxj', 'jxxxxxxxj', 'jjjjjjjjj'],
     obs: ['l...l...l', '.2.....2.', '.........', '...3.3...', '....c....', '...3.3...', '.........', '.2.....2.', 'l...l...l'],
     bombs: { start: 1, t: 19, max: 2, p: .025 } },
+  // ---- 焦糖港湾: open lanes and frosting ----
+  { moves: 22, colors: 5, goal: { type: 'jelly' }, stars: [65000, 80000, 95000],
+    shape: ['xxxxxxxxx', 'xjjjjjjjx', 'xjjjjjjjx', 'xjjxxxjjx', 'xjjxxxjjx', 'xjjxxxjjx', 'xjjjjjjjx', 'xjjjjjjjx', 'xxxxxxxxx'],
+    obs: ['.........', '.........', '.........', '...121...', '...2.2...', '...121...', '.........', '.........', '.........'] },
+  { moves: 22, colors: 5, goal: { type: 'order', items: [{ k: 'frost', n: 14 }, { k: 'c0', n: 50 }] }, stars: [22000, 32000, 44000], shape: FULL,
+    obs: ['.........', '.1.....1.', '..2...2..', '...1.1...', '.2.....2.', '...1.1...', '..2...2..', '.1.....1.', '.........'] },
+  { moves: 24, colors: 5, goal: { type: 'ingredients', n: 4 }, stars: [60000, 75000, 90000], shape: FULL,
+    obs: ['.........', '.........', '11..1..11', '.........', '.1.....1.', '.........', '22.....22', '.........', '.........'] },
+  { moves: 24, colors: 5, goal: { type: 'score' }, stars: [20000, 32000, 46000],
+    shape: ['..xxxxx..', '.xxxxxxx.', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', '.xxxxxxx.', '..xxxxx..'],
+    obs: ['.........', '.........', '..1...1..', '.........', '..2...2..', '.........', '..1...1..', '.........', '.........'] },
+  { moves: 23, colors: 5, goal: { type: 'jelly' }, stars: [85000, 100000, 115000],
+    shape: ['xxxxxxxxx', 'xJJjjjJJx', 'xJjjjjjJx', 'xjjxxxjjx', 'xjjxxxjjx', 'xjjxxxjjx', 'xJjjjjjJx', 'xJJjjjJJx', 'xxxxxxxxx'],
+    obs: ['.........', '.........', '.........', '...222...', '....2....', '...222...', '.........', '.........', '.........'] },
+  // ---- 曲奇花园: locks and special-candy orders ----
+  { moves: 23, colors: 5, goal: { type: 'order', items: [{ k: 'c3', n: 55 }, { k: 'striped', n: 8 }] }, stars: [24000, 34000, 46000], shape: FULL,
+    obs: ['.........', '.l.....l.', '...l.l...', '.........', '.l.....l.', '.........', '...l.l...', '.l.....l.', '.........'] },
+  { moves: 23, colors: 5, goal: { type: 'jelly' }, stars: [80000, 95000, 110000],
+    shape: ['xxxxxxxxx', 'xjjjjjjjx', 'xjJjjjJjx', 'xjjjjjjjx', 'xjjxxxjjx', 'xjjjjjjjx', 'xjJjjjJjx', 'xjjjjjjjx', 'xxxxxxxxx'],
+    obs: ['.........', '.l.....l.', '.........', '...l.l...', '...121...', '...l.l...', '.........', '.l.....l.', '.........'] },
+  { moves: 25, colors: 5, goal: { type: 'ingredients', n: 4 }, stars: [65000, 80000, 95000], shape: FULL,
+    obs: ['.........', '.........', 'll.....ll', '.........', '..1...1..', '.........', '.l.....l.', '.........', '.........'] },
+  { moves: 25, colors: 5, goal: { type: 'order', items: [{ k: 'frost', n: 10 }, { k: 'wrapped', n: 4 }] }, stars: [26000, 38000, 50000], shape: FULL,
+    obs: ['.........', '.2.....2.', '..1l.l1..', '...2.2...', '.........', '...2.2...', '..1l.l1..', '.........', '.........'] },
+  { moves: 24, colors: 5, goal: { type: 'jelly' }, stars: [90000, 105000, 120000],
+    shape: ['jjjjjjjjj', 'jxxxxxxxj', 'jxjjjjjxj', 'jxjJJJjxj', 'jxjJjJjxj', 'jxjJJJjxj', 'jxjjjjjxj', 'jxxxxxxxj', 'jjjjjjjjj'],
+    obs: ['l.......l', '.........', '..l...l..', '.........', '.........', '.........', '..l...l..', '.........', 'l.......l'] },
+  // ---- 汽水温泉: generous bomb countdowns ----
+  { moves: 24, colors: 5, goal: { type: 'score' }, stars: [22000, 35000, 50000], shape: FULL,
+    bombs: { start: 1, t: 22, max: 2, p: .02 } },
+  { moves: 24, colors: 5, goal: { type: 'order', items: [{ k: 'c1', n: 65 }, { k: 'striped', n: 8 }] }, stars: [26000, 38000, 52000],
+    shape: ['.xxxxxxx.', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', '.xxxxxxx.'],
+    bombs: { start: 1, t: 22, max: 2, p: .02 } },
+  { moves: 26, colors: 5, goal: { type: 'ingredients', n: 4 }, stars: [65000, 80000, 95000], shape: FULL,
+    obs: ['.........', '.........', '.1.....1.', '.........', '...l.l...', '.........', '.1.....1.', '.........', '.........'],
+    bombs: { start: 1, t: 22, max: 2, p: .02 } },
+  { moves: 24, colors: 5, goal: { type: 'jelly' }, stars: [90000, 105000, 120000],
+    shape: ['xxxxxxxxx', 'xjjjjjjjx', 'xjJJJJJjx', 'xjJxxxJjx', 'xjJxxxJjx', 'xjJxxxJjx', 'xjJJJJJjx', 'xjjjjjjjx', 'xxxxxxxxx'],
+    obs: ['.........', '.........', '.........', '...111...', '....1....', '...111...', '.........', '.........', '.........'],
+    bombs: { start: 2, t: 21, max: 2, p: .025 } },
+  { moves: 25, colors: 5, goal: { type: 'order', items: [{ k: 'c0', n: 60 }, { k: 'c4', n: 60 }, { k: 'bomb', n: 1 }] }, stars: [30000, 42000, 56000], shape: FULL,
+    obs: ['.........', '.l.....l.', '.........', '...2.2...', '.........', '...2.2...', '.........', '.l.....l.', '.........'],
+    bombs: { start: 2, t: 21, max: 2, p: .025 } },
+  // ---- 莓果庄园: chocolate pockets ----
+  { moves: 23, colors: 5, goal: { type: 'order', items: [{ k: 'choco', n: 12 }, { k: 'c3', n: 55 }] }, stars: [26000, 38000, 52000], shape: FULL,
+    obs: ['.........', '.........', '.........', 'cc.....cc', 'c.......c', '.........', 'c.......c', 'cc.....cc', '.........'] },
+  { moves: 24, colors: 5, goal: { type: 'jelly' }, stars: [85000, 100000, 115000],
+    shape: ['xxxxxxxxx', 'xjjjjjjjx', 'xjJJJJJjx', 'xjjjjjjjx', 'xjjjjjjjx', 'xjjjjjjjx', 'xjjjjjjjx', 'xxxxxxxxx', 'xxxxxxxxx'],
+    obs: ['.........', '.........', '.........', '.........', '.........', '.........', '.........', 'cc.....cc', 'ccc...ccc'] },
+  { moves: 26, colors: 5, goal: { type: 'ingredients', n: 4 }, stars: [65000, 80000, 95000], shape: FULL,
+    obs: ['.........', '.........', 'c.......c', '.........', '.1.....1.', '.........', 'c.......c', '.........', '.........'] },
+  { moves: 25, colors: 5, goal: { type: 'score' }, stars: [24000, 38000, 54000], shape: FULL,
+    obs: ['.........', '.l.....l.', '.........', 'c.......c', '...222...', 'c.......c', '.........', '.l.....l.', '.........'] },
+  { moves: 25, colors: 5, goal: { type: 'jelly' }, stars: [100000, 115000, 130000],
+    shape: ['jjjjjjjjj', 'jJJjjjJJj', 'jjjjjjjjj', 'jjjxxxjjj', 'jjjxxxjjj', 'jjjxxxjjj', 'jjjjjjjjj', 'jJJjjjJJj', 'jjjjjjjjj'],
+    obs: ['.........', '.l.....l.', '.........', '...1c1...', '....c....', '...1c1...', '.........', '.l.....l.', '.........'] },
+  // ---- 蜂蜜回廊: layered frosting and winding routes ----
+  { moves: 25, colors: 5, goal: { type: 'order', items: [{ k: 'frost', n: 12 }, { k: 'striped', n: 8 }] }, stars: [28000, 40000, 54000], shape: FULL,
+    obs: ['.........', '.2.....2.', '..2...2..', '...2.2...', '.........', '...2.2...', '..2...2..', '.2.....2.', '.........'] },
+  { moves: 25, colors: 5, goal: { type: 'jelly' }, stars: [100000, 115000, 130000],
+    shape: ['xxxxxxxxx', 'xJJjjjJJx', 'xJjjjjjJx', 'xjjxxxjjx', 'xjjxxxjjx', 'xjjxxxjjx', 'xJjjjjjJx', 'xJJjjjJJx', 'xxxxxxxxx'],
+    obs: ['.........', '.........', '.........', '...232...', '...2.2...', '...232...', '.........', '.........', '.........'] },
+  { moves: 28, colors: 5, goal: { type: 'ingredients', n: 5 }, stars: [75000, 90000, 105000], shape: FULL,
+    obs: ['.........', '.........', '2.......2', '.l.....l.', '.........', '.l.....l.', '2.......2', '.........', '.........'] },
+  { moves: 26, colors: 5, goal: { type: 'order', items: [{ k: 'striped', n: 10 }, { k: 'wrapped', n: 5 }] }, stars: [30000, 44000, 60000],
+    shape: ['..xxxxx..', '.xxxxxxx.', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', '.xxxxxxx.', '..xxxxx..'],
+    obs: ['.........', '.........', '..l...l..', '.........', '..1...1..', '.........', '..l...l..', '.........', '.........'] },
+  { moves: 26, colors: 5, goal: { type: 'jelly' }, stars: [110000, 125000, 140000],
+    shape: ['jjjjjjjjj', 'jJJjjjJJj', 'jJjjjjjJj', 'jjjxxxjjj', 'jjjxxxjjj', 'jjjxxxjjj', 'jJjjjjjJj', 'jJJjjjJJj', 'jjjjjjjjj'],
+    obs: ['.........', '.l.....l.', '.........', '...2.2...', '....3....', '...2.2...', '.........', '.l.....l.', '.........'],
+    bombs: { start: 1, t: 22, max: 2, p: .02 } },
+  // ---- 棉花糖群岛: shaped boards with open ingredient exits ----
+  { moves: 26, colors: 5, goal: { type: 'score' }, stars: [24000, 38000, 54000],
+    shape: ['xxx...xxx', 'xxxx.xxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxx.xxxx', 'xxx...xxx'],
+    obs: ['.........', '.........', '.1.....1.', '.........', '...l.l...', '.........', '.1.....1.', '.........', '.........'] },
+  { moves: 26, colors: 5, goal: { type: 'jelly' }, stars: [105000, 120000, 135000],
+    shape: ['..jjjjj..', '.jjjjjjj.', 'jjjJJJjjj', 'jjJxxxJjj', 'jjJx.xJjj', 'jjJxxxJjj', 'jjjJJJjjj', '.jjjjjjj.', '..jjjjj..'],
+    obs: ['.........', '.........', '.........', '...121...', '...1.1...', '...121...', '.........', '.........', '.........'] },
+  { moves: 28, colors: 5, goal: { type: 'ingredients', n: 5 }, stars: [75000, 90000, 105000],
+    shape: ['xxxxxxxxx', 'xxxxxxxxx', 'xx.xxx.xx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xx.xxx.xx', 'xxxxxxxxx', 'xxxxxxxxx'],
+    obs: ['.........', '.........', '1.......1', '.l.....l.', '.........', '.l.....l.', '1.......1', '.........', '.........'] },
+  { moves: 27, colors: 5, goal: { type: 'order', items: [{ k: 'c2', n: 60 }, { k: 'wrapped', n: 5 }] }, stars: [30000, 44000, 60000],
+    shape: ['..xxxxx..', '.xxxxxxx.', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', 'xxxxxxxxx', '.xxxxxxx.', '..xxxxx..'],
+    obs: ['.........', '.l.....l.', '..2...2..', '.........', '.........', '.........', '..2...2..', '.l.....l.', '.........'],
+    bombs: { start: 1, t: 22, max: 2, p: .025 } },
+  { moves: 27, colors: 5, goal: { type: 'jelly' }, stars: [115000, 130000, 145000],
+    shape: ['Jjj...jjJ', 'jjjj.jjjj', 'jjjjjjjjj', 'jjjJjJjjj', 'jjjjJjjjj', 'jjjJjJjjj', 'jjjjjjjjj', 'jjjj.jjjj', 'Jjj...jjJ'],
+    obs: ['.........', '.l.....l.', '.........', '....1....', '...1.1...', '....1....', '.........', '.l.....l.', '.........'] },
+  // ---- 极光糖塔: advanced combinations ----
+  { moves: 27, colors: 5, goal: { type: 'jelly' }, stars: [125000, 140000, 155000],
+    shape: ['JjjjjjjjJ', 'jJjjjjjJj', 'jjJjjjJjj', 'jjjJjJjjj', 'jjjjJjjjj', 'jjjJjJjjj', 'jjJjjjJjj', 'jJjjjjjJj', 'JjjjjjjjJ'],
+    obs: ['.........', '.........', '.l.....l.', '.........', '.........', '.........', '.l.....l.', '.........', '.........'],
+    bombs: { start: 2, t: 22, max: 2, p: .025 } },
+  { moves: 28, colors: 5, goal: { type: 'order', items: [{ k: 'frost', n: 12 }, { k: 'wrapped', n: 5 }, { k: 'c0', n: 60 }] }, stars: [34000, 48000, 64000], shape: FULL,
+    obs: ['.........', '.2.....2.', '..1...1..', '...3.3...', '.........', '...3.3...', '..1...1..', '.2.....2.', '.........'] },
+  { moves: 29, colors: 5, goal: { type: 'ingredients', n: 5 }, stars: [80000, 95000, 110000], shape: FULL,
+    obs: ['.........', '.........', '.2.....2.', '.........', 'l.......l', '.........', '.2.....2.', '.........', '.........'],
+    bombs: { start: 2, t: 22, max: 2, p: .025 } },
+  { moves: 28, colors: 6, goal: { type: 'score' }, stars: [26000, 40000, 56000], shape: FULL,
+    obs: ['.........', '.l.....l.', '.........', '...1.1...', '.........', '...1.1...', '.........', '.l.....l.', '.........'],
+    bombs: { start: 2, t: 20, max: 2, p: .025 } },
+  { moves: 28, colors: 5, goal: { type: 'jelly' }, stars: [120000, 135000, 150000],
+    shape: ['jjjjjjjjj', 'jJjjjjjJj', 'jjJjjjJjj', 'jjjxxxjjj', 'jjjxxxjjj', 'jjjxxxjjj', 'jjJjjjJjj', 'jJjjjjjJj', 'jjjjjjjjj'],
+    obs: ['l...l...l', '.........', '.........', '.l.2.2.l.', '....3....', '.l.2.2.l.', '.........', '.........', 'l...l...l'],
+    bombs: { start: 1, t: 22, max: 2, p: .025 } },
+  // ---- 甜蜜王冠: a finale for all four goals ----
+  { moves: 28, colors: 5, goal: { type: 'order', items: [{ k: 'choco', n: 14 }, { k: 'striped', n: 10 }, { k: 'bomb', n: 2 }] }, stars: [38000, 52000, 70000], shape: FULL,
+    obs: ['ccc...ccc', 'cc.....cc', 'c.......c', '.........', '.........', '.........', 'c.......c', 'c.......c', '.........'] },
+  { moves: 29, colors: 5, goal: { type: 'jelly' }, stars: [130000, 145000, 160000],
+    shape: ['jjjjjjjjj', 'jJJJJJJJj', 'jJjjjjjJj', 'jJjxxxjJj', 'jJjxxxjJj', 'jJjxxxjJj', 'jJjjjjjJj', 'jJJJJJJJj', 'jjjjjjjjj'],
+    obs: ['.........', '.........', '.........', '...232...', '...2.2...', '...232...', '.........', '.........', '.........'],
+    bombs: { start: 2, t: 22, max: 2, p: .03 } },
+  { moves: 30, colors: 5, goal: { type: 'ingredients', n: 5 }, stars: [85000, 100000, 115000], shape: FULL,
+    obs: ['.........', '.........', '.2.....2.', 'l.......l', '...1.1...', 'l.......l', '.2.....2.', '.........', '.........'],
+    bombs: { start: 2, t: 22, max: 2, p: .03 } },
+  { moves: 30, colors: 6, goal: { type: 'order', items: [{ k: 'frost', n: 16 }, { k: 'wrapped', n: 6 }, { k: 'c5', n: 60 }] }, stars: [38000, 54000, 72000], shape: FULL,
+    obs: ['.........', '.2.1.1.2.', '.........', '.1.2.2.1.', '.........', '.1.2.2.1.', '.........', '.2.1.1.2.', '.........'] },
+  { moves: 30, colors: 5, goal: { type: 'jelly' }, stars: [145000, 165000, 185000],
+    shape: ['JJjjjjjJJ', 'JjjjjjjjJ', 'jjjjjjjjj', 'jjjxxxjjj', 'jjjxxxjjj', 'jjjxxxjjj', 'jjjjjjjjj', 'JjjjjjjjJ', 'JJjjjjjJJ'],
+    obs: ['l...l...l', '.........', '..2...2..', 'c..2.2..c', '....3....', 'c..2.2..c', '..2...2..', '.........', 'l...l...l'],
+    bombs: { start: 2, t: 22, max: 2, p: .03 } },
 ];
+const LATE_CHAPTERS = [
+  '琥珀糖海', '奶油风车', '蓝莓溪谷', '气泡糖屋', '姜饼集市', '椰香沙洲', '月光果园', '水晶糖桥',
+  '布丁山谷', '香草湖畔', '黑森林堡', '柠檬灯塔', '杏仁长廊', '可可温室', '流星糖湾', '彩糖钟楼',
+  '蜜桃花溪', '雪顶松林', '松露矿洞', '跳跳糖泉', '奶糖迷宫', '樱桃庄园', '银河糖站', '金色糖城',
+  '晨曦糖原', '薄荷冰宫', '榛果群山', '星河汽泉', '千层云梯', '莓香秘境', '幻彩天穹', '传奇糖殿',
+];
+const LATE_THEMES = [
+  { frost: 8, locks: 4, choco: 0, bombs: false },
+  { frost: 4, locks: 10, choco: 0, bombs: false },
+  { frost: 0, locks: 4, choco: 8, bombs: false },
+  { frost: 6, locks: 0, choco: 0, bombs: true },
+  { frost: 10, locks: 6, choco: 0, bombs: false },
+  { frost: 6, locks: 0, choco: 6, bombs: false },
+  { frost: 4, locks: 6, choco: 4, bombs: true },
+  { frost: 8, locks: 6, choco: 4, bombs: true },
+];
+LATE_CHAPTERS.forEach((_, chapter) => {
+  const tier = Math.floor(chapter / LATE_THEMES.length), theme = LATE_THEMES[chapter % LATE_THEMES.length];
+  for (let stage = 0; stage < 5; stage++) {
+    const i = LEVELS.length, R = srand(7301 + i * 97);
+    const type = ['score', 'jelly', 'order', 'ingredients', chapter % 2 ? 'order' : 'jelly'][stage];
+    const shape = LEVELS[60 + (chapter * 5 + stage) % 40].shape.map(row => row.replace(/[jJ]/g, 'x').split(''));
+    const obs = Array.from({ length: ROWS }, () => Array(COLS).fill('.'));
+    const cells = [];
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+      if (shape[r][c] !== '.') cells.push({ r, c, rank: R() });
+    }
+    // Fixed per-level seeds keep blocker layouts stable for saved runs.
+    const candidates = cells.filter(({ r, c }) => r > 0 && r < ROWS - 1 &&
+      (type !== 'ingredients' || (cells.some(p => p.c === c && p.r < r) && cells.some(p => p.c === c && p.r > r))))
+      .sort((a, b) => a.rank - b.rank);
+    const rowBlocks = Array(ROWS).fill(0), colBlocks = Array(COLS).fill(0);
+    const frost = theme.frost ? theme.frost + Math.floor(tier / 2) * 2 : 0;
+    const place = (count, symbol) => {
+      let placed = 0;
+      for (const { r, c } of candidates) {
+        if (placed >= count) break;
+        if (obs[r][c] !== '.' || rowBlocks[r] >= 3 || colBlocks[c] >= 3) continue;
+        obs[r][c] = symbol === 'frost' ? String(1 + (placed + chapter + stage) % (tier < 2 ? 2 : 3)) : symbol;
+        rowBlocks[r]++; colBlocks[c]++; placed++;
+      }
+      if (placed !== count) throw new Error(`Level ${i + 1}: not enough space for ${symbol}.`);
+    };
+    place(frost, 'frost'); place(theme.locks, 'l'); place(theme.choco, 'c');
+    const colors = tier >= 2 && (stage === 0 || (stage === 2 && chapter % 4 === 3)) ? 6 : 5;
+    let goal = { type }, jellyLayers = 0;
+    if (type === 'jelly') {
+      const pattern = (chapter + stage) % 4;
+      const priority = ({ r, c }) => pattern === 0 ? Math.min(r, c, ROWS - 1 - r, COLS - 1 - c) :
+        pattern === 1 ? Math.abs(r - c) : pattern === 2 ? (r + c) % 2 : Math.abs(r - 4) + Math.abs(c - 4);
+      const targets = cells.filter(({ r, c }) => obs[r][c] === '.' || obs[r][c] === 'l')
+        .sort((a, b) => priority(a) - priority(b) || a.rank - b.rank)
+        .slice(0, 42 + tier * 4 + (stage === 4 ? 10 : 0));
+      targets.forEach(({ r, c }, n) => {
+        const double = n < 8 + tier * 2 + (stage === 4 ? 4 : 0);
+        shape[r][c] = double ? 'J' : 'j'; jellyLayers += double ? 2 : 1;
+      });
+    } else if (type === 'order') {
+      const special = ['striped', 'wrapped', 'bomb'][(chapter + stage) % 3];
+      const n = special === 'striped' ? 8 + tier : special === 'wrapped' ? 4 + Math.floor(tier / 2) : 1 + Math.floor(tier / 2);
+      const items = [{ k: 'c' + (chapter + stage) % colors, n: 52 + tier * 5 + (stage === 4 ? 5 : 0) }, { k: special, n }];
+      if (frost) items.unshift({ k: 'frost', n: frost });
+      else if (theme.choco) items.unshift({ k: 'choco', n: theme.choco });
+      goal = { type, items };
+    } else if (type === 'ingredients') goal = { type, n: 4 + (tier >= 2 ? 1 : 0) };
+    const target = type === 'score' ? 26000 + tier * 3000 : type === 'jelly' ? jellyLayers * 1000 :
+      type === 'ingredients' ? 75000 + tier * 5000 : 30000 + tier * 4000 + (stage === 4 ? 4000 : 0);
+    const L = {
+      moves: 26 + tier + [0, 1, 1, 3, 2][stage], colors, goal,
+      stars: [target, target + 15000, target + 32000],
+      shape: shape.map(row => row.join('')), obs: obs.map(row => row.join('')),
+    };
+    if (theme.bombs) L.bombs = { start: tier >= 2 || stage === 4 ? 2 : 1, t: Math.max(20, 24 - tier - (stage === 4 ? 1 : 0)), max: 2, p: .02 + tier * .003 };
+    LEVELS.push(L);
+  }
+});
 const EPISODES = LEVELS.map((_, i) => i).filter(i => i % 5 === 0);
 // Safety net: an order can never ask for a colour that isn't on the board.
 LEVELS.forEach(L => { if (L.goal.type === 'order') L.goal.items.forEach(it => { if (/^c\d$/.test(it.k)) L.colors = Math.max(L.colors, +it.k.slice(1) + 1); }); });
 
 /* ================= heroes =================
    One hero joins each level. Each hero has an active skill (charged by crushing candies,
-   tap to use) and a passive skill. Both level 1..5, upgraded with the candies crushed while playing. */
+   tap to use) and a passive skill. Both level 1..10, upgraded with the candies crushed while playing. */
 const HP = {
-  slamArea: [1, 1, 1, 1, 1], slamRows: [0, 0, 1, 1, 1], slamCols: [0, 0, 0, 0, 0], lastStand: [1, 1, 2, 2, 2], lsSmash: [0, 2, 2, 3, 4],
-  meteors: [2, 3, 4, 5, 6], spark: [20, 35, 50, 65, 80],
-  ambush: [3, 4, 5, 6, 7], crit: [25, 32, 40, 48, 55], sneak: [5, 9, 13, 18, 24],
-  heal: [2, 2, 2, 2, 2], bless: [[1, 0], [2, 0], [1, 1], [2, 1], [3, 1]],
-  arrows: [2, 3, 4, 5, 6], quick: [10, 18, 26, 34, 42],
-  bears: [2, 2, 3, 3, 4], bearMoves: [2, 3, 3, 4, 5], pet: [2, 3, 4, 5, 6],
+  slamArea: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1], slamRows: [0, 0, 1, 1, 1, 2, 2, 2, 3, 3], slamCols: [0, 0, 0, 0, 1, 1, 2, 2, 2, 3],
+  lastStand: [1, 1, 1, 2, 2, 2, 3, 3, 3, 4], lsSmash: [0, 1, 2, 2, 3, 4, 4, 5, 6, 6],
+  meteors: [1, 2, 2, 3, 4, 5, 6, 7, 8, 9], spark: [10, 19, 28, 37, 46, 55, 65, 75, 85, 95],
+  ambush: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11], crit: [10, 18, 26, 34, 42, 50, 58, 66, 73, 80], sneak: [2, 6, 10, 14, 18, 22, 26, 30, 35, 40],
+  heal: [1, 1, 1, 2, 2, 2, 3, 3, 3, 4], bless: [[1, 0], [2, 0], [1, 1], [2, 1], [3, 1], [2, 2], [3, 2], [4, 2], [3, 3], [4, 3]],
+  arrows: [1, 2, 2, 3, 4, 5, 6, 7, 8, 9], quick: [5, 12, 19, 26, 33, 40, 48, 56, 64, 72],
+  bears: [1, 1, 2, 2, 2, 3, 3, 3, 4, 4], bearMoves: [2, 3, 3, 4, 5, 5, 6, 7, 7, 8], pet: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
 };
-// ~470 candies are crushed per level cleared (bot measurement), so maxing one hero takes ~45+ levels
-const UPG = [1000, 2000, 3200, 5000];
+// Keep early upgrade costs; later tiers support long-term progression through the expanded campaign.
+const UPG = [1000, 2000, 3200, 5000, 7500, 10500, 14000, 18000, 23000];
 const COIN_TO_CANDY = 6.5; // old coin prices were [150, 300, 500, 800]
-const MAXLV = 5;
+const MAXLV = 10;
 // cost = candies to crush to charge the tap skill, per tap-skill level (some upgrades charge faster instead of hitting harder)
 // voice: [speech pitch, speech rate, fallback shout base frequency in Hz]
 const HERO_LIST = [
-  { id: 'warrior', color: '#e8333f', light: '#ff9a9a', dark: '#7a0d1a', word: 'orange', cost: [170, 160, 160, 155, 150], target: true, voice: [.7, 1.05, 130] },
-  { id: 'mage', color: '#9b4be0', light: '#e2b8ff', dark: '#3a0f6e', word: 'purple', cost: [210, 200, 190, 180, 170], voice: [1.15, 1.1, 240] },
-  { id: 'rogue', color: '#2fa84f', light: '#a8f5b8', dark: '#0b4019', word: 'green', cost: [145, 137, 129, 121, 113], voice: [.9, 1.2, 170] },
-  { id: 'priest', color: '#f0a500', light: '#fff1a8', dark: '#8a5a00', word: '', cost: [115, 108, 100, 92, 85], voice: [1.35, .95, 300] },
-  { id: 'archer', color: '#2e9bff', light: '#bfeaff', dark: '#0b3f80', word: 'blue', cost: [200, 186, 172, 158, 145], voice: [1.05, 1.15, 210] },
-  { id: 'summoner', color: '#14b8a6', light: '#b5fff3', dark: '#064e48', word: 'pink', cost: [225, 215, 205, 195, 185], voice: [1.6, 1.15, 360] },
+  { id: 'warrior', color: '#e8333f', light: '#ff9a9a', dark: '#7a0d1a', word: 'orange', cost: [210, 200, 190, 180, 170, 162, 155, 148, 141, 135], target: true, voice: [.7, 1.05, 130] },
+  { id: 'mage', color: '#9b4be0', light: '#e2b8ff', dark: '#3a0f6e', word: 'purple', cost: [250, 235, 220, 205, 190, 180, 170, 160, 152, 145], voice: [1.15, 1.1, 240] },
+  { id: 'rogue', color: '#2fa84f', light: '#a8f5b8', dark: '#0b4019', word: 'green', cost: [185, 175, 165, 155, 145, 134, 123, 113, 103, 93], voice: [.9, 1.2, 170] },
+  { id: 'priest', color: '#f0a500', light: '#fff1a8', dark: '#8a5a00', word: '', cost: [150, 140, 130, 120, 110, 102, 94, 86, 80, 74], voice: [1.35, .95, 300] },
+  { id: 'archer', color: '#2e9bff', light: '#bfeaff', dark: '#0b3f80', word: 'blue', cost: [245, 230, 215, 200, 185, 170, 155, 140, 127, 115], voice: [1.05, 1.15, 210] },
+  { id: 'summoner', color: '#14b8a6', light: '#b5fff3', dark: '#064e48', word: 'pink', cost: [270, 255, 240, 225, 210, 200, 190, 180, 170, 160], voice: [1.6, 1.15, 360] },
 ];
 const HERO = Object.fromEntries(HERO_LIST.map(h => [h.id, h]));
 
@@ -613,7 +822,8 @@ const HERO = Object.fromEntries(HERO_LIST.map(h => [h.id, h]));
 const STR = {
   heroes: '英雄', play: '开始',
   'g.score': '目标分', 'g.jelly': '果冻', 'g.order': '收集', 'g.ing': '运送食材',
-  ep: ['糖果小镇', '柠檬水湖', '巧克力山丘', '果冻丛林', '糖霜雪原', '冰晶城堡', '甘草峡谷', '可可工厂', '炸弹糖坊', '薄荷森林', '彩虹云端', '星光糖宫'],
+  ep: ['糖果小镇', '柠檬水湖', '巧克力山丘', '果冻丛林', '糖霜雪原', '冰晶城堡', '甘草峡谷', '可可工厂', '炸弹糖坊', '薄荷森林', '彩虹云端', '星光糖宫',
+    '焦糖港湾', '曲奇花园', '汽水温泉', '莓果庄园', '蜂蜜回廊', '棉花糖群岛', '极光糖塔', '甜蜜王冠', ...LATE_CHAPTERS],
   'el.frost': '<b>糖霜</b>：在旁边消除糖果，或用特殊糖果击中，每次剥掉一层。',
   'el.lock': '<b>甘草锁</b>：被锁住的糖果不能移动；让它参与消除就能解锁。',
   'el.choco': '<b>巧克力</b>：在旁边消除就能吃掉它；如果一步都没碰到巧克力，它就会蔓延！',
@@ -648,6 +858,15 @@ const STR = {
   'gt.order': '完成收集目标！', 'gt.ing': n => `把 <b>${n}</b> 个食材运送到底部！`, movesN: n => `<b>${n}</b> 步`,
   sendOne: '派出一位英雄助战：', playBang: '开始！', upgradeHeroes: '升级英雄', map: '地图',
   finalScore: '得分', newBest: '新纪录！', candyWon: n => `+${fmt(n)} 颗糖果`, allDone: '恭喜你通关了所有关卡！&#127852;',
+  challengeTitle: '额外挑战', medalDone: '挑战勋章已获得', medalNew: '挑战勋章达成！',
+  'challenge.score': '得分达到二星标准', 'challenge.jelly': '至少剩余 3 步清除全部果冻',
+  'challenge.order': '至少剩余 3 步完成全部订单', 'challenge.ingredients': '至少剩余 3 步运送全部食材',
+  challengeReward: n => `首次达成奖励 ${n} 颗糖果；不影响正常通关。`,
+  streakTitle: '连胜宝箱', streakProgress: (n, total) => `连胜宝箱 ${n}/${total}`,
+  streakBody: (total, reward) => `连续首次通关 <b>${total}</b> 个新关卡，自动获得 <b>${reward}</b> 颗糖果！失败会清空连胜进度，重玩已通关的关卡不会增加进度。`,
+  streakWon: n => `连胜宝箱开启！额外获得 ${n} 颗糖果`,
+  streakReset: '连胜进度已重置，下次再挑战吧！',
+  medalsOwned: (n, total) => `已获得 <b>${n} / ${total}</b> 枚挑战勋章。可以重玩关卡补齐勋章，每关仅奖励一次。`,
   next: '下一关 &#9654;', replay: '重玩', outOfMoves: '步数用完了！',
   'why.score': n => `还差 <b>${n}</b> 分。`, 'why.jelly': n => `还剩 <b>${n}</b> 块果冻没有清除。`,
   'why.order': '还需收集：', 'why.ing': n => `还有 <b>${n}</b> 个食材没有运到。`,
@@ -662,7 +881,9 @@ const STR = {
     &#8226; 后面的关卡会出现障碍：${ic.frost} 糖霜（在旁边消除剥掉一层）、${ic.locked} 甘草锁（参与消除即可解锁）、${ic.choco} 巧克力（不处理会蔓延）、${ic.timer} 糖果炸弹（倒计时归零前要消除）。<br>
     &#8226; 每关免费道具：棒棒糖锤子和洗牌。<br>
     &#8226; <b>英雄：</b>每关派出一位英雄。消除糖果会为英雄充能&mdash;&mdash;英雄发光时点击它即可释放技能。每位英雄还有一个常驻的被动技能。<br>
-    &#8226; 消除的每一颗糖果都会存进糖果罐，用来把英雄的两个技能升到最高 5 级（永远没有内购）。<br>
+    &#8226; 消除的每一颗糖果都会存进糖果罐，用来把英雄的两个技能升到最高 10 级（永远没有内购）。<br>
+    &#8226; <b>挑战勋章：</b>完成关卡的额外挑战可获得一次性糖果奖励；没有完成挑战也能正常通关。<br>
+    &#8226; <b>连胜宝箱：</b>连续首次通关 3 个新关卡，自动获得额外糖果；失败会中断连胜，重玩不增加进度。<br>
     &#8226; 进度和未完成的关卡会自动保存在本设备上。`,
   leaveTitle: '离开关卡？', leaveText: '棋盘已保存&mdash;&mdash;稍后可以继续。', keepPlaying: '继续游戏', restartLevel: '重新开始本关',
   unfinished: '本关有一局未完成的游戏。', 'continue': '继续', startOver: '重新开始',
@@ -670,12 +891,12 @@ const STR = {
   tapSkill: '主动', alwaysOn: '被动', charges: n => `消除 ${n} 颗糖果即可充满。`, chargeNext: n => `（充能更快：只需 ${n} 颗糖果）`, maxLevel: '已满级',
   levelN: n => `${n} 级：`, upgradeTo: n => `升到 ${n} 级`, levelTitle: n => `${n} 级`,
   selectedCheck: '已选择 &#10003;', sendHero: '派出这位英雄', close: '关闭',
-  youHave: n => `糖果罐里有 <i class="candyc"></i> <b>${n}</b> 颗糖果 &middot; 消除糖果就能攒更多`,
+  youHave: n => `糖果罐里有 <i class="candyc"></i> <b>${n}</b> 颗糖果 &middot; 消除、挑战勋章和连胜都能攒糖果`,
   newsTitle: '英雄登场！', meetHeroes: '认识英雄', later: '稍后',
   newsBody: `&#8226; 每关可以派出<b>一位英雄</b>。<br>
     &#8226; 每消除一颗糖果都会为英雄充能&mdash;&mdash;英雄发光时点击它即可释放技能。<br>
     &#8226; 每位英雄还有一个常驻的被动技能。<br>
-    &#8226; 消除的糖果会存进糖果罐，用来把两个技能都升到 5 级。`,
+    &#8226; 消除的糖果会存进糖果罐，用来把两个技能都升到 10 级。`,
   'h.warrior.name': '姜饼爵士', 'h.warrior.cls': '战士', 'h.warrior.trait': '高生命、高防御的前排战士，擅长近身猛击，永不言败。',
   'h.warrior.a': '盾牌猛击', 'h.warrior.p': '背水一战',
   'h.warrior.ad': lv => {
@@ -719,9 +940,34 @@ HERO_LIST.forEach(H => {
 });
 const clsLabel = H => H.cls;
 
+/* ================= optional challenges & win streak ================= */
+const MEDAL_REWARD = 100, STREAK_GOAL = 3, STREAK_REWARD = 250;
+function challengeMet(run, remainingMoves) {
+  const type = run.L.goal.type;
+  if (type === 'score') return run.score >= run.L.stars[1];
+  return remainingMoves >= 3;
+}
+function awardWinRewards(progress, run, remainingMoves) {
+  const n = run.i + 1;
+  const medal = !progress.medals[n] && challengeMet(run, remainingMoves);
+  if (medal) progress.medals[n] = true;
+  let chest = false;
+  if (!progress.stars[n]) {
+    progress.winStreak++;
+    if (progress.winStreak >= STREAK_GOAL) { chest = true; progress.winStreak = 0; }
+  }
+  const bonus = (medal ? MEDAL_REWARD : 0) + (chest ? STREAK_REWARD : 0);
+  progress.candy += bonus;
+  return { medal, chest, bonus };
+}
+function challengeHTML(L, n) {
+  return `<div class="challenge"><b>&#9670; ${_t('challengeTitle')}</b> &middot; ${_t('challenge.' + L.goal.type)}<br>
+    ${save.medals[n] ? _t('medalDone') : _t('challengeReward', MEDAL_REWARD)}</div>`;
+}
+
 /* ================= local save (localStorage) ================= */
 const SAVE_KEY = 'sweetSaga.save.v1';
-const defaultSave = () => ({ unlocked: 1, stars: {}, best: {}, music: { on: true, vol: 1 }, sfx: { on: true, vol: 1 }, seenHelp: false, run: null, candy: 0, hero: 'warrior', heroLv: {}, seenHeroes: false });
+const defaultSave = () => ({ unlocked: 1, stars: {}, best: {}, medals: {}, winStreak: 0, music: { on: true, vol: 1 }, sfx: { on: true, vol: 1 }, seenHelp: false, run: null, candy: 0, hero: 'warrior', heroLv: {}, seenHeroes: false });
 let save = loadSave();
 function heroLv(id) {
   let l = save.heroLv[id];
@@ -735,6 +981,8 @@ HERO_LIST.forEach(h => heroLv(h.id));
 // The old coin currency is gone: coins left in older saves become candies at the upgrade-price ratio.
 if ('coins' in save) { save.candy = (save.candy | 0) + Math.round(Math.max(0, save.coins | 0) * COIN_TO_CANDY); delete save.coins; }
 save.candy = Math.max(0, save.candy | 0);
+if (!save.medals || typeof save.medals !== 'object' || Array.isArray(save.medals)) save.medals = {};
+save.winStreak = Math.max(0, Math.min(STREAK_GOAL - 1, save.winStreak | 0));
 // sound settings: music and effects each have an on/off switch and a 0..1 volume (older saves had one mute flag)
 for (const k of ['music', 'sfx']) {
   const v = save[k] && typeof save[k] === 'object' ? save[k] : {};
@@ -2117,6 +2365,7 @@ function checkEnd() {
   return null;
 }
 async function win() {
+  const remainingMoves = G.moves;
   state = 'crush'; busy = true; selected = null; hint = null; hammerMode = false; heroAim = false;
   clearRun(); hideToast(); updateHUD();
   await wait(350);
@@ -2125,6 +2374,7 @@ async function win() {
   const L = G.L, n = G.i + 1;
   const stars = G.score >= L.stars[2] ? 3 : G.score >= L.stars[1] ? 2 : 1;
   const newBest = G.score > (save.best[n] || 0);
+  G.rewards = awardWinRewards(save, G, remainingMoves);
   save.stars[n] = Math.max(save.stars[n] || 0, stars);
   if (newBest) save.best[n] = G.score;
   save.unlocked = Math.max(save.unlocked, Math.min(LEVELS.length, n + 1));
@@ -2132,11 +2382,12 @@ async function win() {
   state = 'over';
   Music.duck(.3);
   Snd.win();
-  showWin(stars, newBest, G.crushed || 0);
+  showWin(stars, newBest, (G.crushed || 0) + G.rewards.bonus);
 }
 async function lose(reason) {
   state = 'over'; busy = true; selected = null; hint = null; hammerMode = false; heroAim = false;
   clearRun(); hideToast(); updateHUD();
+  G.lostStreak = save.winStreak > 0; save.winStreak = 0;
   persist();
   await wait(500);
   Music.duck(.3);
@@ -2765,13 +3016,13 @@ const Aura = {
 const SKILLS = {
   async warrior(lv, p) {
     const B = new Blast(); B.noCharge = true;
-    const a = HP.slamArea[lv - 1], lines = n => n >= 3 ? [-1, 0, 1] : n >= 1 ? [0] : [];
+    const a = HP.slamArea[lv - 1];
     shake = 16;
     HFX.slam(p.r, p.c);
     B.fx.push({ t: 'shield', r: p.r, c: p.c, d: 0 }, { t: 'ring', r: p.r, c: p.c, rad: a + .4, d: 120, color: 0 });
     for (let dr = -a; dr <= a; dr++) for (let dc = -a; dc <= a; dc++) B.hit(p.r + dr, p.c + dc, 140 + (Math.abs(dr) + Math.abs(dc)) * 40);
-    for (const d of lines(HP.slamRows[lv - 1])) B.row(p.r + d, p.c, 260, 0);
-    for (const d of lines(HP.slamCols[lv - 1])) B.col(p.c + d, p.r, 260, 0);
+    for (const r of skillLines(HP.slamRows[lv - 1], p.r, ROWS)) B.row(r, p.c, 260, 0);
+    for (const c of skillLines(HP.slamCols[lv - 1], p.c, COLS)) B.col(c, p.r, 260, 0);
     await executeBlast(B); await gravity();
   },
   async mage(lv) {
@@ -3380,6 +3631,7 @@ function updateHUD() {
   $('cHammer').textContent = G.hammer; $('cShuffle').textContent = G.shuffle;
   $('bHammer').disabled = G.hammer <= 0; $('bShuffle').disabled = G.shuffle <= 0;
   $('bHammer').classList.toggle('active', hammerMode);
+  $('challengeHint').textContent = '\u25c6 ' + (save.medals[G.i + 1] ? _t('medalDone') : _t('challenge.' + t));
   updateHeroBtn();
 }
 const RING = +(2 * Math.PI * 29).toFixed(2);
@@ -3554,6 +3806,7 @@ function showIntro() {
     ${levelElementsHTML(L)}
     <div class="mv">${_t('movesN', L.moves)}</div>
     <div class="targets">&#9733; ${fmt(L.stars[0])} &nbsp; &#9733;&#9733; ${fmt(L.stars[1])} &nbsp; &#9733;&#9733;&#9733; ${fmt(L.stars[2])}</div>
+    ${challengeHTML(L, G.i + 1)}
     <div class="goaltxt" style="margin-top:12px;font-size:16px;font-weight:900">${_t('sendOne')}</div>
     ${heroPickHTML(save.hero)}
     <div class="hpick-info" id="hpInfo">${heroInfoHTML(save.hero)}</div>
@@ -3577,6 +3830,9 @@ function showWin(stars, newBest, candy) {
     <div class="final">${_t('finalScore')} <b>${fmt(G.score)}</b></div>
     ${newBest ? `<div class="best">${_t('newBest')}</div>` : ''}
     <div><span class="candy-won"><i class="candyc"></i> <span id="candyWon">${_t('candyWon', 0)}</span></span></div>
+    ${G.rewards.medal ? `<div class="challenge">&#9670; ${_t('medalNew')} +${MEDAL_REWARD}</div>` : ''}
+    ${G.rewards.chest ? `<div class="challenge">${_t('streakWon', STREAK_REWARD)}</div>` : ''}
+    ${!save.medals[G.i + 1] ? challengeHTML(G.L, G.i + 1) : ''}
     ${last ? `<div class="goaltxt">${_t('allDone')}</div>` : ''}
     <div class="row"><button class="btn" data-a="next">${last ? _t('map') : _t('next')}</button></div>
     <div class="row"><button class="btn small orange" data-a="replay">${_t('replay')}</button><button class="btn small pink" data-a="heroes">${_t('heroes')}</button><button class="btn small blue" data-a="map">${_t('map')}</button></div>`, {
@@ -3638,6 +3894,7 @@ function showLose(candy, reason) {
   else why = _t('why.ing', G.ing.total - G.ing.delivered);
   modal(`<h2>${_t(reason === 'bomb' ? 'bombOut' : 'outOfMoves')}</h2><div class="sad">&#128546;</div><div class="why">${why}</div>
     <div><span class="candy-won"><i class="candyc"></i> ${_t('candyWon', candy)}</span></div>
+    ${G.lostStreak ? `<div class="challenge">${_t('streakReset')}</div>` : ''}
     <div class="tip">${_t('tipLose')}</div>
     <div class="row"><button class="btn orange" data-a="retry">${_t('tryAgain')}</button></div>
     <div class="row"><button class="btn small pink" data-a="heroes">${_t('heroes')}</button><button class="btn small blue" data-a="map">${_t('map')}</button></div>`, {
@@ -3783,7 +4040,7 @@ function buildMap() {
     <path d="${d}" fill="none" stroke="#ff8fc8" stroke-width="5" stroke-dasharray="12 14" stroke-linecap="round"/></svg>`;
   const R = srand(4242), pathX = y => w / 2 + Math.sin((h - bot - y) / gap * 1.1) * amp;
   for (let i = 0; i < 6; i++) html += `<div class="cloud" style="left:${R() * (w - 120)}px;top:${40 + R() * (h * .35)}px;width:${80 + R() * 60}px;height:${26 + R() * 14}px"></div>`;
-  for (let i = 0, placed = 0; i < 400 && placed < N * 2.4; i++) {
+  for (let i = 0, placed = 0; i < Math.max(400, N * 8) && placed < N * 2.4; i++) {
     const y = 60 + R() * (h - 120), x = R() * w, size = 26 + R() * 22;
     if (Math.abs(x - pathX(y)) < 62 || x < size / 2 || x > w - size / 2) continue;
     const keys = ['n0', 'n1', 'n2', 'n3', 'n4', 'n5', 'w1', 'h4', 'bomb', 'cherry'];
@@ -3799,12 +4056,14 @@ function buildMap() {
     const cls = locked ? 'locked' : st ? 'done' : '';
     const starsHtml = st ? `<div class="ns">${'&#9733;'.repeat(st)}<i>${'&#9733;'.repeat(3 - st)}</i></div>` : '';
     const you = cur ? `<div class="you">${save.run && save.run.i === i ? _t('continue') : _t('play')}</div>` : (save.run && save.run.i === i ? `<div class="you">${_t('continue')}</div>` : '');
+    const medal = save.medals[n] ? `<span class="medal" title="${_t('medalDone')}">&#9670;</span>` : '';
     const d = Math.min(700, Math.abs(i - curI) * 45);
-    html += `<button class="node ${cls} ${cur ? 'cur' : ''}" data-l="${i}" style="left:${p.x}px;top:${p.y}px;animation-delay:${d}ms${cur ? `,${d + 500}ms` : ''}" aria-label="${_t('level', n)}">${locked ? '&#128274;' : n}${starsHtml}${you}</button>`;
+    html += `<button class="node ${cls} ${cur ? 'cur' : ''}" data-l="${i}" style="left:${p.x}px;top:${p.y}px;animation-delay:${d}ms${cur ? `,${d + 500}ms` : ''}" aria-label="${_t('level', n)}${save.medals[n] ? '，' + _t('medalDone') : ''}">${locked ? '&#128274;' : n}${starsHtml}${you}${medal}</button>`;
   });
   html += `<img class="avatar" src="${heroImg(save.hero)}" alt="" style="left:${pts[curI].x - 24}px;top:${pts[curI].y - 116}px">`;
   inner.innerHTML = html;
   $('totalStars').textContent = total + ' / ' + N * 3;
+  $('mapStreak').textContent = _t('streakProgress', save.winStreak, STREAK_GOAL);
   refreshCandy();
   $('mapHeroImg').src = heroImg(save.hero);
   inner.querySelectorAll('.node').forEach(b => b.addEventListener('click', () => {
@@ -3921,6 +4180,14 @@ function init() {
   $('helpBtn').addEventListener('click', () => { Snd.init(); Snd.click(); showHelp(); });
   $('mapHome').addEventListener('click', () => { Snd.click(); showScreen('title'); });
   $('mapHeroes').addEventListener('click', () => { Snd.init(); Snd.click(); openHeroes('map'); });
+  $('mapStreak').addEventListener('click', () => {
+    Snd.init(); Snd.click();
+    const medals = Object.values(save.medals).filter(Boolean).length;
+    modal(`<h2>${_t('streakTitle')}</h2><div class="goaltxt">${_t('streakProgress', save.winStreak, STREAK_GOAL)}</div>
+      <div class="help">${_t('streakBody', STREAK_GOAL, STREAK_REWARD)}</div>
+      <div class="challenge">${_t('medalsOwned', medals, LEVELS.length)}</div>
+      <div class="row"><button class="btn small" data-a="close">${_t('close')}</button></div>`, { close: closeModal });
+  });
   $('heroBack').addEventListener('click', () => { Snd.click(); closeHeroes(); });
   $('mapSound').addEventListener('click', openSettings);
   $('bSound').addEventListener('click', openSettings);

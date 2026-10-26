@@ -136,15 +136,23 @@ button{font-family:inherit;-webkit-appearance:none;appearance:none}
 #game.wide #toast{bottom:16px}
 
 /* ---------- modal ---------- */
-#modal{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(40,0,70,.55);touch-action:manipulation}
-.card{position:relative;width:100%;max-width:360px;max-height:100%;overflow:auto;background:linear-gradient(180deg,#fff6fc,#ffd6ef);border:5px solid #fff;border-radius:28px;
+#modal{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;padding:calc(16px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));background:rgba(40,0,70,.55);touch-action:manipulation}
+.card{position:relative;width:100%;max-width:360px;max-height:100%;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;background:linear-gradient(180deg,#fff6fc,#ffd6ef);border:5px solid #fff;border-radius:28px;
  box-shadow:0 0 0 5px #e04ca6,0 22px 50px rgba(0,0,0,.45);padding:0 18px 20px;text-align:center;color:#7b1a68;animation:cardIn .4s cubic-bezier(.2,1.5,.4,1)}
+.card.level-intro{display:flex;flex-direction:column;min-height:0;overflow:hidden;padding:0}
+.intro-body{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling:touch;padding:0 18px}
+.intro-actions{flex-shrink:0;padding:0 18px 20px;border-top:1px solid rgba(224,76,166,.25)}
+.intro-details{margin-top:4px}
+.intro-details summary{padding:10px 0;font-size:14px;font-weight:900;cursor:pointer}
 .card h2{margin:0 -18px 14px;padding:14px 10px;border-radius:22px 22px 0 0;background:linear-gradient(180deg,#ff8acb,#e0338a);color:#fff;font-size:30px;text-shadow:0 3px 0 #8a1450}
+.level-intro h2{margin-bottom:8px;padding:10px;font-size:26px}
 .card .row{display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap}
 .card .goaltxt{font-size:19px;margin:6px 0}
 .card .goalicons{display:flex;justify-content:center;gap:14px;margin:10px 0;flex-wrap:wrap}
 .card .goalicons div{display:flex;flex-direction:column;align-items:center;font-weight:900;font-size:18px}
 .card .goalicons img{width:46px;height:46px}
+.level-intro .goalicons{margin:6px 0}
+.level-intro .goalicons img{width:40px;height:40px}
 .card .els{margin:6px auto 2px;max-width:340px;text-align:left}
 .card .el{display:flex;align-items:center;gap:8px;font-size:13px;line-height:1.35;margin:5px 0;background:rgba(255,255,255,.55);border-radius:12px;padding:4px 8px}
 .card .el img{width:36px;height:36px;flex:0 0 auto}
@@ -856,7 +864,7 @@ const STR = {
   tap: '点我！', petLeft: s => `剩余 ${s} 步`, heroAria: (h, c) => `${c}·${h}`,
   level: n => `第 ${n} 关`, 'gt.score': n => `达到 <b>${n}</b> 分！`, 'gt.jelly': '清除所有<b>果冻</b>！',
   'gt.order': '完成收集目标！', 'gt.ing': n => `把 <b>${n}</b> 个食材运送到底部！`, movesN: n => `<b>${n}</b> 步`,
-  sendOne: '派出一位英雄助战：', playBang: '开始！', upgradeHeroes: '升级英雄', map: '地图',
+  sendOne: '派出一位英雄助战：', introDetails: '详细说明', playBang: '开始！', upgradeHeroes: '升级英雄', map: '地图',
   finalScore: '得分', newBest: '新纪录！', candyWon: n => `+${fmt(n)} 颗糖果`, allDone: '恭喜你通关了所有关卡！&#127852;',
   challengeTitle: '额外挑战', medalDone: '挑战勋章已获得', medalNew: '挑战勋章达成！',
   'challenge.score': '得分达到二星标准', 'challenge.jelly': '至少剩余 3 步清除全部果冻',
@@ -3800,26 +3808,31 @@ function levelElementsHTML(L) {
 }
 function showIntro() {
   const L = G.L;
-  modal(`<h2>${_t('level', G.i + 1)}</h2>
+  modal(`<div class="intro-body"><h2>${_t('level', G.i + 1)}</h2>
     <div class="goaltxt">${goalText()}</div>
     <div class="goalicons">${goalIconsHTML()}</div>
-    ${levelElementsHTML(L)}
     <div class="mv">${_t('movesN', L.moves)}</div>
-    <div class="targets">&#9733; ${fmt(L.stars[0])} &nbsp; &#9733;&#9733; ${fmt(L.stars[1])} &nbsp; &#9733;&#9733;&#9733; ${fmt(L.stars[2])}</div>
-    ${challengeHTML(L, G.i + 1)}
     <div class="goaltxt" style="margin-top:12px;font-size:16px;font-weight:900">${_t('sendOne')}</div>
     ${heroPickHTML(save.hero)}
-    <div class="hpick-info" id="hpInfo">${heroInfoHTML(save.hero)}</div>
-    <div class="row"><button class="btn" data-a="play">${_t('playBang')}</button></div>
-    <div class="row"><button class="btn small pink" data-a="heroes">${_t('upgradeHeroes')}</button><button class="btn small blue" data-a="map">${_t('map')}</button></div>`, {
+    <div class="hpick-info hidden" id="hpInfo" aria-live="polite"></div>
+    <details class="intro-details"><summary>${_t('introDetails')}</summary>
+      ${levelElementsHTML(L)}
+      <div class="targets">&#9733; ${fmt(L.stars[0])} &nbsp; &#9733;&#9733; ${fmt(L.stars[1])} &nbsp; &#9733;&#9733;&#9733; ${fmt(L.stars[2])}</div>
+      ${challengeHTML(L, G.i + 1)}
+    </details></div>
+    <div class="intro-actions"><div class="row"><button class="btn" data-a="play">${_t('playBang')}</button></div>
+    <div class="row"><button class="btn small pink" data-a="heroes">${_t('upgradeHeroes')}</button><button class="btn small blue" data-a="map">${_t('map')}</button></div></div>`, {
     play: () => { closeModal(); dropIn(); },
     heroes: () => openHeroes('intro'),
     map: () => { closeModal(); goMap(); },
-  });
+  }, 'level-intro');
   $('modal').querySelectorAll('[data-h]').forEach(b => b.addEventListener('click', () => {
     Snd.init(); Snd.click(); chooseHero(b.dataset.h);
     $('modal').querySelectorAll('[data-h]').forEach(x => x.classList.toggle('on', x === b));
-    $('hpInfo').innerHTML = heroInfoHTML(b.dataset.h);
+    const info = $('hpInfo');
+    info.innerHTML = heroInfoHTML(b.dataset.h);
+    info.classList.remove('hidden');
+    info.scrollIntoView({ block: 'nearest' });
   }));
 }
 function showWin(stars, newBest, candy) {
@@ -4137,6 +4150,9 @@ function onUp(e) {
   if (drag.again) selected = null;
   drag = null;
 }
+function onTouchMove(e) {
+  if (screen === 'game' && !(e.target.closest && e.target.closest('#modal .card, .vol'))) e.preventDefault();
+}
 function checkHint() {
   if (state !== 'play' || busy || hint || hammerMode || heroAim || NOW - lastAction < 5000) return;
   const m = findMoves();
@@ -4166,8 +4182,8 @@ function init() {
   cv.addEventListener('pointerup', onUp);
   cv.addEventListener('pointercancel', onUp);
   cv.addEventListener('contextmenu', e => e.preventDefault());
-  // block page scrolling while playing, but let volume sliders be dragged
-  document.addEventListener('touchmove', e => { if (screen === 'game' && !(e.target.closest && e.target.closest('.vol'))) e.preventDefault(); }, { passive: false });
+  // Keep the board still without blocking modal scrolling or volume sliders.
+  document.addEventListener('touchmove', onTouchMove, { passive: false });
   document.addEventListener('gesturestart', e => e.preventDefault());
   document.addEventListener('dblclick', e => e.preventDefault());
   ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown'].forEach(ev => document.addEventListener(ev, () => Snd.init(), { passive: true }));

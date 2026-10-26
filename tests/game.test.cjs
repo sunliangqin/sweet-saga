@@ -32,6 +32,87 @@ test('the complete inline game script parses', () => {
   assert.doesNotThrow(() => new vm.Script(script[1]));
 });
 
+test('level intro reveals selected hero skills while keeping explanations collapsed and actions separate', () => {
+  const start = html.indexOf('function showIntro()');
+  const end = html.indexOf('function showWin(', start);
+  assert.ok(start >= 0 && end > start);
+  let rendered, actions, cardClass;
+  const calls = [];
+  const clicks = new Map(), selected = new Map();
+  const buttons = ['warrior', 'mage'].map(id => ({
+    dataset: { h: id },
+    addEventListener: (event, fn) => { assert.equal(event, 'click'); clicks.set(id, fn); },
+    classList: { toggle: (cls, on) => { assert.equal(cls, 'on'); selected.set(id, on); } },
+  }));
+  let revealed = false, scrollOptions;
+  const info = {
+    innerHTML: '',
+    classList: { remove: cls => { assert.equal(cls, 'hidden'); revealed = true; } },
+    scrollIntoView: options => { scrollOptions = options; },
+  };
+  vm.runInNewContext(html.slice(start, end) + '\nshowIntro();', {
+    G: { L: { moves: 31, stars: [46000, 61000, 78000] }, i: 259 },
+    save: { hero: 'warrior' },
+    _t: key => key, fmt: String,
+    goalText: () => 'goal', goalIconsHTML: () => 'icons',
+    levelElementsHTML: () => 'obstacles', challengeHTML: () => 'challenge',
+    heroPickHTML: () => 'heroes', heroInfoHTML: id => `skills:${id}`,
+    $: id => id === 'hpInfo' ? info : { querySelectorAll: () => buttons },
+    modal: (markup, handlers, cls) => { rendered = markup; actions = handlers; cardClass = cls; },
+    Snd: { init() {}, click() {} },
+    chooseHero: id => calls.push(`select:${id}`),
+    closeModal: () => calls.push('close'),
+    dropIn: () => calls.push('play'),
+    openHeroes: from => calls.push(`heroes:${from}`),
+    goMap: () => calls.push('map'),
+  });
+  assert.equal(cardClass, 'level-intro');
+  const [details, footer] = rendered.split('<div class="intro-actions">');
+  assert.match(details, /^<div class="intro-body">/);
+  const extra = details.match(/<details class="intro-details">([\s\S]*?)<\/details>/);
+  assert.ok(extra, 'Detailed explanations must be collapsed by default.');
+  for (const text of ['obstacles', 'challenge']) assert.ok(extra[1].includes(text));
+  assert.doesNotMatch(extra[1], /hpInfo/);
+  assert.match(details, /class="hpick-info hidden" id="hpInfo" aria-live="polite"><\/div>/);
+  assert.ok(details.indexOf('heroes') < details.indexOf('<details'));
+  assert.ok(details.indexOf('id="hpInfo"') < details.indexOf('<details'));
+  assert.doesNotMatch(details, /data-a=/);
+  for (const action of ['play', 'heroes', 'map']) assert.ok(footer.includes(`data-a="${action}"`));
+  assert.equal(revealed, false);
+  for (const hero of ['mage', 'warrior', 'warrior']) {
+    revealed = false;
+    clicks.get(hero)();
+    assert.equal(info.innerHTML, `skills:${hero}`);
+    assert.equal(revealed, true);
+    assert.equal(scrollOptions.block, 'nearest');
+    for (const id of ['warrior', 'mage']) assert.equal(selected.get(id), id === hero);
+  }
+  actions.play(); actions.heroes(); actions.map();
+  assert.deepEqual(calls, ['select:mage', 'select:warrior', 'select:warrior', 'close', 'play', 'heroes:intro', 'close', 'map']);
+});
+
+test('touch scrolling works in game modals without allowing board scrolling', () => {
+  const start = html.indexOf('function onTouchMove(');
+  const end = html.indexOf('function checkHint()', start);
+  assert.ok(start >= 0 && end > start);
+  assert.match(html, /addEventListener\('touchmove', onTouchMove, \{ passive: false \}\)/);
+  for (const { screen, ancestors, blocked } of [
+    { screen: 'game', ancestors: ['#modal .card'], blocked: false },
+    { screen: 'game', ancestors: ['.vol'], blocked: false },
+    { screen: 'game', ancestors: [], blocked: true },
+    { screen: 'map', ancestors: [], blocked: false },
+    { screen: 'heroes', ancestors: [], blocked: false },
+  ]) {
+    let prevented = false;
+    const event = {
+      target: { closest: selectors => selectors.split(',').some(selector => ancestors.includes(selector.trim())) },
+      preventDefault: () => { prevented = true; },
+    };
+    vm.runInNewContext(html.slice(start, end) + '\nonTouchMove(event);', { screen, event });
+    assert.equal(prevented, blocked, `${screen}: ${ancestors.join(', ') || 'board/background'}`);
+  }
+});
+
 test('the campaign adds exactly 200 levels and 40 five-level chapters', () => {
   assert.equal(levels.length, 260);
   assert.equal(episodes.length, 52);

@@ -11,6 +11,7 @@ A single-file HTML match-3 game (Candy Crush Saga style). Touch friendly, no ads
 - 可选挑战勋章：分数关达到二星，其余目标在至少剩 3 步时完成；英雄和道具可自由使用，首次达成各奖励 100 颗糖果，可以重玩补齐，不影响正常通关
 - 连胜宝箱：连续首次通关 3 个新关卡，自动奖励 250 颗糖果；失败会清空连胜，重玩已通关的关卡不会增加进度
 - 仿照原版逐章引入障碍：糖霜（1–3 层）、甘草锁、会蔓延的巧克力、倒计时糖果炸弹；每关开始时会说明本关出现的障碍
+- 关卡开始弹窗默认只展示目标、步数和英雄选择，点选英雄即显示其技能，关卡说明仍收进「详细说明」；小屏幕和横屏可滑动查看，底部操作按钮始终可见
 - 条纹糖果、包装糖果、彩色炸弹及其组合
 - 6 位英雄（战士、法师、盗贼、牧师、弓箭手、召唤师），每关派出一位，各有主动和被动技能
 - 每位英雄的主动、被动技能均可升至 10 级；1–5 级降低前期强度、放慢充能，6–10 级逐步增强技能、被动效果或充能速度，升级费用递增，原有升级费用保持不变
@@ -23,6 +24,8 @@ A single-file HTML match-3 game (Candy Crush Saga style). Touch friendly, no ads
 - 所有图形、音乐与音效均由代码实时生成，无外部资源
 
 The campaign has 260 levels across 52 chapters, adding 200 levels to the original 60. Levels 61–100 are handcrafted; levels 101–260 use fixed per-level layouts, themed blocker combinations, and gradually increasing targets. New bomb levels retain generous countdowns. Levels 1–60 are unchanged, and existing saves automatically unlock the next level after the last one cleared.
+
+Level intro dialogs show goals, moves, and hero selection first. Selecting a hero reveals their skills and scrolls them into view without expanding the obstacle explanations, star targets, or challenges. Start, Upgrade Heroes, and Map stay visible on small and landscape screens while the content above them scrolls.
 
 Optional mastery medals add replay goals without blocking normal wins. Each medal pays 100 candies once: reach two-star score, or finish any other goal with at least three moves left. Heroes and tools can be used freely and never affect medal eligibility. Three consecutive first-time level wins open a 250-candy chest automatically; a loss resets the streak, and replays do not advance it. Medals, streaks, and unfinished runs are saved locally.
 

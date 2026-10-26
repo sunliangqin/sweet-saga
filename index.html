@@ -809,6 +809,7 @@ const HP = {
   heal: [1, 1, 1, 2, 2, 2, 3, 3, 3, 4], bless: [[1, 0], [2, 0], [1, 1], [2, 1], [3, 1], [2, 2], [3, 2], [4, 2], [3, 3], [4, 3]],
   arrows: [1, 2, 2, 3, 4, 5, 6, 7, 8, 9], quick: [5, 12, 19, 26, 33, 40, 48, 56, 64, 72],
   bears: [1, 1, 2, 2, 2, 3, 3, 3, 4, 4], bearMoves: [2, 3, 3, 4, 5, 5, 6, 7, 7, 8], pet: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+  conjure: [1, 1, 1, 2, 2, 2, 3, 3, 3, 4], recipe: [5, 8, 11, 14, 17, 20, 23, 26, 29, 32],
 };
 // Keep early upgrade costs; later tiers support long-term progression through the expanded campaign.
 const UPG = [1000, 2000, 3200, 5000, 7500, 10500, 14000, 18000, 23000];
@@ -823,6 +824,7 @@ const HERO_LIST = [
   { id: 'priest', color: '#f0a500', light: '#fff1a8', dark: '#8a5a00', word: '', cost: [150, 140, 130, 120, 110, 102, 94, 86, 80, 74], voice: [1.35, .95, 300] },
   { id: 'archer', color: '#2e9bff', light: '#bfeaff', dark: '#0b3f80', word: 'blue', cost: [245, 230, 215, 200, 185, 170, 155, 140, 127, 115], voice: [1.05, 1.15, 210] },
   { id: 'summoner', color: '#14b8a6', light: '#b5fff3', dark: '#064e48', word: 'pink', cost: [270, 255, 240, 225, 210, 200, 190, 180, 170, 160], voice: [1.6, 1.15, 360] },
+  { id: 'alchemist', color: '#f17f24', light: '#ffe4a3', dark: '#87320f', word: 'orange', cost: [240, 230, 220, 210, 200, 190, 181, 173, 165, 158], voice: [1.25, 1.1, 300] },
 ];
 const HERO = Object.fromEntries(HERO_LIST.map(h => [h.id, h]));
 
@@ -847,9 +849,11 @@ const STR = {
   'shout.priest': ['愿圣光治愈一切！', '别放弃，大家都还在！', '温暖的光啊，守护我们！'],
   'shout.archer': ['百步穿杨，箭无虚发！', '瞄准——放箭！', '风之箭，贯穿一切！'],
   'shout.summoner': ['出来吧，小熊们！开饭啦！', '伙伴们，交给你们了！', '契约之力——召唤！'],
+  'shout.alchemist': ['甜蜜配方，变变变！', '一勺奇迹，满盘惊喜！', '条纹、包装，彩虹登场！'],
   'shout.lastStand': ['我……还能战！', '只要还站着，就绝不认输！', '姜饼骑士，永不倒下！'],
   'theme.warrior': '主题曲《姜饼骑士进行曲》', 'theme.mage': '主题曲《星夜书斋圆舞曲》', 'theme.rogue': '主题曲《暗影小步》',
   'theme.priest': '主题曲《蜂蜜圣歌》', 'theme.archer': '主题曲《薄荷林间谣》', 'theme.summoner': '主题曲《软糖游行》',
+  'theme.alchemist': '主题曲《泡泡糖实验室》',
   'toast.lastStand': (h, n) => `${h}奋战到底：+${n} 步！`,
   'toast.ready': (h, s) => `${h}已就绪！点击释放「${s}」`,
   'toast.bearsHome': '小熊软糖们摇摇摆摆地回家啦，拜拜！',
@@ -861,6 +865,7 @@ const STR = {
   'toast.aim': s => `点击一颗糖果释放「${s}」！`,
   'toast.hammer': '点击一颗糖果将它砸碎！',
   'toast.upgraded': (h, s, lv) => `${h}的「${s}」升到了 ${lv} 级！`,
+  'toast.noPlain': '没有可变形的普通糖果，请先消除障碍或使用现有特殊糖果。',
   tap: '点我！', petLeft: s => `剩余 ${s} 步`, heroAria: (h, c) => `${c}·${h}`,
   level: n => `第 ${n} 关`, 'gt.score': n => `达到 <b>${n}</b> 分！`, 'gt.jelly': '清除所有<b>果冻</b>！',
   'gt.order': '完成收集目标！', 'gt.ing': n => `把 <b>${n}</b> 个食材运送到底部！`, movesN: n => `<b>${n}</b> 步`,
@@ -933,6 +938,10 @@ const STR = {
   'h.summoner.a': '小熊软糖', 'h.summoner.p': '忠诚伙伴',
   'h.summoner.ad': lv => `召唤 ${HP.bears[lv - 1]} 只小熊软糖，持续 ${HP.bearMoves[lv - 1]} 步。每只小熊立刻吃掉一颗糖果，之后每走一步再吃一颗。`,
   'h.summoner.pd': lv => `每关开始时有一只小熊软糖加入，协助 ${HP.pet[lv - 1]} 步。`,
+  'h.alchemist.name': '泡泡糖', 'h.alchemist.cls': '炼糖师', 'h.alchemist.trait': '用甜蜜配方炼制特殊糖果，为下一步组合创造惊喜。',
+  'h.alchemist.a': '糖果炼成', 'h.alchemist.p': '幸运配方',
+  'h.alchemist.ad': lv => `随机将至多 ${HP.conjure[lv - 1]} 颗普通糖果变成条纹、包装或彩色炸弹，留在棋盘上供你组合使用。不会替换已有特殊糖果、锁定糖果或倒计时糖果。`,
+  'h.alchemist.pd': lv => `每颗炼成的糖果有 ${HP.recipe[lv - 1]}% 几率成为彩色炸弹，其余等概率成为条纹或包装糖果。`,
 };
 function _t(key, ...args) {
   const v = key in STR ? STR[key] : key;
@@ -1340,6 +1349,17 @@ const MTRACKS = {
       if (i === 7) M.wood(t, .035, 900);
       if (i === 0) M.kick(t, .18);
     } }),
+  alchemist: song({ bpm: 116, legato: .75, vol: .44, bars: ['C', 'Am', 'Dm', 'G', 'F', 'C', 'Dm', 'G'], leadVol: .1,
+    lead: [76, 79, 72, 0, 74, 77, 76, 0, 81, 76, 72, 0, 71, 74, 76, 0, 77, 81, 74, 0, 76, 79, 77, 0, 79, 74, 71, 0, 72, -1, 0, 0,
+      81, 77, 72, 0, 76, 79, 81, 0, 79, 76, 72, 0, 74, -1, 76, 0, 77, 74, 69, 0, 72, 76, 77, 0, 74, 71, 67, 0, 72, -1, -1, 0],
+    inst: (M, t, m, d, v) => { M.bell(t, m, d, v); M.harp(t, m - 12, d * .7, v * .35); },
+    acc(M, ch, i, t, e) {
+      const n = ch.notes;
+      M.pluck(t, [n[0], n[2], n[1] + 12, n[2]][i % 4], e * 1.8, .035);
+      if (i === 0 || i === 4) M.bass(t, ch.root + (i ? 7 : 0), e * 3, .2);
+      if (i === 2 || i === 6) M.snap(t, .035);
+      if (i & 1) M.shaker(t, .012);
+    } }),
 };
 const Voice = {
   v: null,
@@ -1723,6 +1743,21 @@ function drawHeroArt(g, id) {
     g.fillStyle = grad(g, .3, .3, .09, ['#ffffff', '#7ffff0', '#0aa39a']); g.beginPath(); g.arc(.3, .3, .08, 0, Math.PI * 2); g.fill(); g.restore();
     g.save(); g.translate(-.27, .3); g.scale(.36, .36); drawBear(g, 1, 40); g.restore();
     star5(g, .2, -.3, .035, '#7ffff0');
+  } else if (id === 'alchemist') {
+    g.fillStyle = '#fff4e6'; g.beginPath(); rr(g, -.3, .22, .6, .4, .1); g.fill();
+    g.fillStyle = grad(g, 0, .1, .3, ['#ffe0ef', '#ff9ac8', '#c94784']); g.beginPath(); g.arc(0, .1, .27, 0, Math.PI * 2); g.fill();
+    face(g, .12, { pupil: '#87320f' });
+    g.strokeStyle = '#b66b17'; g.lineWidth = .02;
+    for (const x of [-.09, .09]) { g.beginPath(); g.arc(x, .075, .075, 0, Math.PI * 2); g.stroke(); }
+    g.beginPath(); g.moveTo(-.015, .075); g.lineTo(.015, .075); g.stroke();
+    g.fillStyle = '#ffffff';
+    for (const [x, y, r] of [[-.2, -.25, .13], [0, -.33, .16], [.2, -.25, .13]]) { g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); }
+    g.beginPath(); rr(g, -.25, -.25, .5, .13, .035); g.fill();
+    g.fillStyle = '#ffc742'; g.fillRect(-.24, -.16, .48, .035);
+    g.save(); g.translate(.29, .29); g.rotate(.2);
+    g.fillStyle = '#a9f5ff'; g.beginPath(); g.moveTo(-.04, -.15); g.lineTo(.04, -.15); g.lineTo(.04, -.05); g.lineTo(.11, .1); g.quadraticCurveTo(0, .16, -.11, .1); g.lineTo(-.04, -.05); g.closePath(); g.fill();
+    g.fillStyle = '#ee72c4'; g.beginPath(); g.ellipse(0, .07, .075, .045, 0, 0, Math.PI * 2); g.fill(); g.restore();
+    star5(g, -.3, .28, .07, '#ffd23f'); star5(g, .32, -.32, .045, '#ffffff');
   }
   g.restore();
   g.beginPath(); g.arc(0, 0, .485, 0, Math.PI * 2); g.lineWidth = .03; g.strokeStyle = '#fff'; g.stroke();
@@ -2776,6 +2811,11 @@ const HFX = {
       this.circle(cx, cy, R * .25, '255,150,220', 2400, 150, { spin: 1.5, star: 6, runes: 16 });
       const cols = ['#ff6b8b', '#ffd23f', '#5ce1a0', '#5cc8ff', '#c48bff'];
       this.rain(60, 1800, () => { const a = Math.random() * Math.PI * 2, d = R * (.55 + Math.random() * .25); this.part({ kind: 'star', add: true, x: cx + Math.cos(a) * d, y: cy + Math.sin(a) * d, vx: -Math.cos(a) * d * 1.4 - Math.sin(a) * 120, vy: -Math.sin(a) * d * 1.4 + Math.cos(a) * 120, max: .7, size: 4 + Math.random() * 4, color: cols[rnd(cols.length)] }); });
+    } else if (H.id === 'alchemist') {
+      this.tint('70,20,0', .32, 2200); this.vignette('255,130,70', .6, 2300);
+      this.circle(cx, cy, R * .34, '255,210,120', 2200, 0, { spin: 1.2, star: 3 });
+      this.rays(cx, cy, '255,200,230', 12, R, 1800, 0, { spin: -.6, a: .2 });
+      this.rain(45, 1700, () => this.part({ kind: 'star', add: true, fadeIn: true, x: Math.random() * w, y: h + 10, vx: (Math.random() - .5) * 100, vy: -(120 + Math.random() * 200), max: 1.4, size: 4 + Math.random() * 5, color: SPRINKLES[rnd(SPRINKLES.length)] }));
     }
   },
   slam(r, c) {
@@ -2826,6 +2866,12 @@ const HFX = {
     for (let i = 0; i < 8; i++) later(i * 55, () => this.part({ kind: 'img', img: imgs[i % 3], x: cx, y: cy, vx: (Math.random() - .5) * 900, vy: -(520 + Math.random() * 520), ay: 1500, max: 1.6, size: S * (.8 + Math.random() * .5), vr: (Math.random() - .5) * 8 }));
     this.burst(cx, cy, 70, { kind: 'confetti', speed: 650, life: 1.6, size: 10, color: ['#ff6b8b', '#ffd23f', '#5ce1a0', '#5cc8ff', '#c48bff'], p: { ay: 700, drag: .985 } });
   },
+  conjure(r, c) {
+    const { x, y } = this.xy(r, c);
+    this.ring(x, y, '255,210,120', 16, 650, 0, T * 2);
+    this.rays(x, y, '255,170,220', 8, T * 1.5, 550, 0, { spin: 1, a: .5 });
+    this.burst(x, y, 20, { speed: 180, life: .7, size: 5, color: SPRINKLES, p: { kind: 'star', drag: .96, add: true } });
+  },
   lastStand() {
     const w = innerWidth, h = innerHeight;
     this.tint('70,0,0', .45, 1800); this.vignette('170,0,20', .9, 1800);
@@ -2837,11 +2883,11 @@ const HFX = {
 /* ================= hero-ready aura =================
    While the active skill is fully charged, a themed effect wraps the hero button. It is drawn on a
    small canvas inside the button, behind the portrait: mage fire, warrior battle lightning,
-   rogue shadow smoke, priest holy light, archer wind, summoner circle. */
+   rogue shadow smoke, priest holy light, archer wind, summoner circle, alchemist candy stars. */
 const FIRE = ['rgba(255,248,215,1)', 'rgba(255,190,70,.95)', 'rgba(255,90,30,.85)', 'rgba(150,50,190,.5)'];
 const Aura = {
   cv: null, g: null, id: null, want: false, lvl: 0, ps: [], last: 0, chk: 0, s: 0, d: 1, boom: -1e9,
-  COL: { warrior: '#ffb02e', mage: '#ff7a1a', rogue: '#3dff8a', priest: '#ffe680', archer: '#7fffd9', summoner: '#ff8ad8' },
+  COL: { warrior: '#ffb02e', mage: '#ff7a1a', rogue: '#3dff8a', priest: '#ffe680', archer: '#7fffd9', summoner: '#ff8ad8', alchemist: '#ffd080' },
   attach(btn) {
     this.cv = btn ? btn.querySelector('canvas.aura') : null;
     this.g = this.cv ? this.cv.getContext('2d') : null;
@@ -3019,6 +3065,17 @@ const Aura = {
       });
       if (A.want) A.emit(16, dt, () => A.part({ kind: 'star', orb: { a: Math.random() * Math.PI * 2, r: R * 2.1, w: 1.5, dr: -R * 1.6 }, max: .6, fadeIn: 1, size: (3 + Math.random() * 2) * k, color: `rgb(${cols[rnd(5)]})` }));
     },
+    alchemist(A, g, t, dt, k) {
+      const { cx, cy, R } = A, cols = ['255,150,210', '255,220,100', '120,220,255'];
+      A.glowRing(g, '255,180,90', .5, R * .9, R * 2);
+      cols.forEach((col, i) => {
+        const a = t * 2 + i * Math.PI * 2 / 3, r = R * (1.3 + i * .12), x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r;
+        A.trail(g, r, a, .8, col, 4 * k, 10);
+        g.drawImage(HFX.glow(`rgba(${col},1)`), x - 9 * k, y - 9 * k, 18 * k, 18 * k);
+        star5(g, x, y, 5 * k, '#ffffff');
+      });
+      if (A.want) A.emit(18, dt, () => A.part({ kind: 'star', x: cx + (Math.random() - .5) * R * 3, y: cy + R, vx: (Math.random() - .5) * 25 * k, vy: -45 * k, max: .8, size: 4 * k, color: SPRINKLES[rnd(SPRINKLES.length)] }));
+    },
   },
 };
 const SKILLS = {
@@ -3081,12 +3138,26 @@ const SKILLS = {
     await wait(450);
     await petsAct(false);
   },
+  async alchemist(lv) {
+    const cand = []; eachCell((x, r, c) => { if (plain(x)) cand.push([r, c, x]); });
+    shuffleArr(cand);
+    const targets = cand.slice(0, HP.conjure[lv - 1]), chance = HP.recipe[heroLv('alchemist').p - 1] / 100;
+    targets.forEach(([r, c, x], i) => later(i * 140, () => {
+      const roll = Math.random();
+      x.type = roll < chance ? 'bomb' : roll < (1 + chance) / 2 ? 'wrapped' : (Math.random() < .5 ? 'stripeH' : 'stripeV');
+      if (x.type === 'bomb') x.color = -1;
+      x.scale = 1.6; tween(x, { scale: 1 }, 320, E.outBack);
+      sparkle(r, c, 12, HERO.alchemist.light); HFX.conjure(r, c); Snd.play('special');
+    }));
+    await wait(targets.length * 140 + 320);
+  },
 };
 async function castHero(p) {
   const h = G && G.hero;
   if (!h || busy || state !== 'play' || h.charge < h.cost) return;
   const H = HERO[h.id];
   if (H.active.target && (!p || !inB(p.r, p.c) || !grid[p.r][p.c])) return;
+  if (h.id === 'alchemist' && !grid.some(row => row.some(plain))) { showToast(_t('toast.noPlain'), 2400); return; }
   busy = true; heroAim = false; hammerMode = false; selected = null; clearHint(); hideToast();
   h.charge = 0; updateHUD();
   Snd.play('hero'); HFX.cast(H); cutIn(H);

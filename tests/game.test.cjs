@@ -310,9 +310,9 @@ const heroes = evaluate(`({
   })),
 })`);
 
-test('all six heroes have complete ten-level stats and descriptions', () => {
+test('all seven heroes have complete ten-level stats and descriptions', () => {
   assert.equal(heroes.max, 10);
-  assert.equal(heroes.list.length, 6);
+  assert.equal(heroes.list.length, 7);
   for (const [key, values] of Object.entries(heroes.hp)) {
     assert.equal(values.length, 10, key);
     if (key === 'bless') {
@@ -328,7 +328,7 @@ test('all six heroes have complete ten-level stats and descriptions', () => {
     assert.ok(hero.descriptions.flat().every(text => typeof text === 'string' && !/undefined|NaN/.test(text)), hero.id);
     assert.equal(new Set(hero.descriptions.map(pair => pair[1])).size, 10, `${hero.id}: every passive upgrade should improve its effect`);
   }
-  for (const key of ['spark', 'crit', 'sneak', 'quick']) assert.ok(heroes.hp[key].every(n => n < 100));
+  for (const key of ['spark', 'crit', 'sneak', 'quick', 'recipe']) assert.ok(heroes.hp[key].every(n => n < 100));
   assert.ok(heroes.hp.arrows.every(n => n <= 9));
 });
 
@@ -338,8 +338,9 @@ test('hero levels 1-5 charge more slowly than before and early powers are reduce
     rogue: [145, 137, 129, 121, 113], priest: [115, 108, 100, 92, 85],
     archer: [200, 186, 172, 158, 145], summoner: [225, 215, 205, 195, 185],
   };
-  for (const hero of heroes.list) {
-    assert.ok(hero.cost.slice(0, 5).every((cost, i) => cost > oldCosts[hero.id][i]), hero.id);
+  for (const [id, costs] of Object.entries(oldCosts)) {
+    const hero = heroes.list.find(h => h.id === id);
+    assert.ok(hero.cost.slice(0, 5).every((cost, i) => cost > costs[i]), id);
   }
   assert.equal(heroes.hp.meteors[0], 1);
   assert.equal(heroes.hp.ambush[0], 2);
@@ -353,10 +354,10 @@ test('hero progression is smooth across all ten levels, including the level 5-6 
   for (const hero of heroes.list) {
     assert.ok(hero.cost.every((cost, i) => !i || cost >= hero.cost[i - 1] * 0.9), `${hero.id}: charging jump`);
   }
-  for (const key of ['slamArea', 'slamRows', 'slamCols', 'lastStand', 'lsSmash', 'meteors', 'ambush', 'heal', 'arrows', 'bears', 'bearMoves', 'pet']) {
+  for (const key of ['slamArea', 'slamRows', 'slamCols', 'lastStand', 'lsSmash', 'meteors', 'ambush', 'heal', 'arrows', 'bears', 'bearMoves', 'pet', 'conjure']) {
     assert.ok(heroes.hp[key].every((value, i, values) => !i || value - values[i - 1] <= 1), `${key}: power jump`);
   }
-  for (const key of ['spark', 'crit', 'sneak', 'quick']) {
+  for (const key of ['spark', 'crit', 'sneak', 'quick', 'recipe']) {
     assert.ok(heroes.hp[key].every((value, i, values) => !i || value - values[i - 1] <= 10), `${key}: probability jump`);
   }
   const blessingPower = heroes.hp.bless.map(([stripes, wrapped]) => stripes + 2 * wrapped);
@@ -387,4 +388,128 @@ test('saved hero levels and candy balances survive the increased level cap', () 
     assert.deepEqual(save.heroLv, heroLv);
     assert.equal(save.candy, 12345);
   }
+});
+
+function loadAlchemist(cells, { active = 1, passive = 1, random = () => 0.4 } = {}) {
+  const helpersStart = html.indexOf('const isIng =');
+  const helpersEnd = html.indexOf('function computeCols()', helpersStart);
+  const skillsStart = html.indexOf('const SKILLS =');
+  const skillsEnd = html.indexOf('async function petsAct(', skillsStart);
+  assert.ok(helpersStart >= 0 && helpersEnd > helpersStart && skillsStart >= 0 && skillsEnd > skillsStart);
+  const grid = Array.from({ length: 9 }, () => Array(9).fill(null));
+  cells.forEach((cell, i) => { grid[Math.floor(i / 9)][i % 9] = cell; });
+  const cost = heroes.list.find(h => h.id === 'alchemist').cost[active - 1];
+  const G = { hero: { id: 'alchemist', cost, charge: cost }, moves: 30 };
+  const calls = [];
+  const context = {
+    localStorage: { getItem: () => JSON.stringify({ hero: 'alchemist', heroLv: { alchemist: { a: active, p: passive } } }) },
+    Math: Object.assign(Object.create(Math), { random }),
+    grid, G, state: 'play', busy: false, heroAim: false, hammerMode: false, selected: null,
+    Snd: { play: sound => calls.push(['sound', sound]) },
+    HFX: { cast: hero => calls.push(['cast', hero.id]), conjure: (r, c) => calls.push(['conjure', r, c]) },
+    E: { outBack: t => t }, tween: () => Promise.resolve(), sparkle() {},
+    later: (ms, fn) => fn(),
+    wait: ms => { calls.push(['wait', ms]); return Promise.resolve(); },
+    clearHint() {}, hideToast() {}, updateHUD() {},
+    showToast: (text, ms) => calls.push(['toast', text, ms]),
+    cutIn: hero => calls.push(['cutIn', hero.id]),
+    cascade: async () => { calls.push(['cascade', G.noCharge]); },
+    afterMove: async playerMove => { calls.push(['afterMove', playerMove]); context.busy = false; },
+  };
+  const api = vm.runInNewContext(
+    campaignSource + html.slice(helpersStart, helpersEnd) + html.slice(skillsStart, skillsEnd) +
+      '\n({ skill: SKILLS.alchemist, cast: castHero });',
+    context,
+    { timeout: 5000 },
+  );
+  return { ...api, grid, G, calls, context };
+}
+
+test('alchemist creates both stripe orientations, wrapped candies, and color bombs', async () => {
+  for (const [rolls, type] of [
+    [[0], 'bomb'], [[0.2], 'wrapped'], [[0.8, 0.1], 'stripeH'], [[0.8, 0.9], 'stripeV'],
+  ]) {
+    const candy = { type: 'normal', color: 2 };
+    const runtime = loadAlchemist([candy], { random: () => rolls.shift() ?? 0.4 });
+    await runtime.skill(1);
+    assert.equal(candy.type, type);
+    assert.equal(candy.color, type === 'bomb' ? -1 : 2);
+    assert.equal(runtime.calls.filter(call => call[0] === 'conjure').length, 1);
+  }
+});
+
+test('alchemist active upgrades create the stated number of distinct specials at every level', async () => {
+  for (let active = 1; active <= 10; active++) {
+    const cells = Array.from({ length: 10 }, () => ({ type: 'normal', color: 2 }));
+    const runtime = loadAlchemist(cells, { active });
+    await runtime.skill(active);
+    assert.equal(cells.filter(cell => cell.type !== 'normal').length, heroes.hp.conjure[active - 1]);
+    assert.equal(runtime.G.moves, 30);
+  }
+});
+
+test('alchemist never replaces blockers, ingredients, locks, countdowns, or existing specials', async () => {
+  const protectedCells = [
+    null, { type: 'frost', color: -1, hp: 3 }, { type: 'choco', color: -1 },
+    { type: 'cherry', color: -1 }, { type: 'nut', color: -1 },
+    { type: 'normal', color: 1, lock: true }, { type: 'normal', color: 1, timer: 5 },
+    { type: 'stripeH', color: 1 }, { type: 'stripeV', color: 1 },
+    { type: 'wrapped', color: 1 }, { type: 'armed', color: 1 }, { type: 'bomb', color: -1 },
+  ];
+  const before = JSON.stringify(protectedCells);
+  const ordinary = [{ type: 'normal', color: 3 }, { type: 'normal', color: 4 }];
+  const runtime = loadAlchemist([...protectedCells, ...ordinary], { active: 10 });
+  await runtime.skill(10);
+  assert.equal(JSON.stringify(protectedCells), before);
+  assert.ok(ordinary.every(cell => cell.type === 'wrapped'));
+  assert.equal(runtime.calls.filter(call => call[0] === 'conjure').length, 2);
+});
+
+test('alchemist passive matches the stated bomb probability and splits remaining types evenly', async () => {
+  for (const [passive, bombs, wrapped] of [[1, 50, 475], [10, 320, 340]]) {
+    const candy = { type: 'normal', color: 2 }, counts = { bomb: 0, wrapped: 0, striped: 0 };
+    let roll = 0;
+    const runtime = loadAlchemist([candy], { passive, random: () => roll });
+    for (let i = 0; i < 1000; i++) {
+      candy.type = 'normal'; candy.color = 2; roll = (i + 0.5) / 1000;
+      await runtime.skill(1);
+      counts[candy.type.startsWith('stripe') ? 'striped' : candy.type]++;
+    }
+    assert.deepEqual(counts, { bomb: bombs, wrapped, striped: wrapped });
+  }
+});
+
+test('alchemist casts spend charge but not moves and keep generated specials for later play', async () => {
+  const candy = { type: 'normal', color: 2 };
+  const runtime = loadAlchemist([candy]);
+  await runtime.cast(null);
+  assert.equal(candy.type, 'wrapped');
+  assert.equal(runtime.G.hero.charge, 0);
+  assert.equal(runtime.G.moves, 30);
+  assert.equal(runtime.G.noCharge, false);
+  assert.equal(runtime.context.busy, false);
+  assert.ok(runtime.calls.some(call => call[0] === 'cutIn' && call[1] === 'alchemist'));
+  assert.ok(runtime.calls.some(call => call[0] === 'cascade' && call[1] === true));
+  assert.ok(runtime.calls.some(call => call[0] === 'afterMove' && call[1] === false));
+});
+
+test('alchemist rejects a board with no eligible candy explicitly without spending charge', async () => {
+  const runtime = loadAlchemist([{ type: 'bomb', color: -1 }, { type: 'normal', color: 1, lock: true }]);
+  const before = JSON.stringify(runtime.grid);
+  await runtime.cast(null);
+  assert.equal(JSON.stringify(runtime.grid), before);
+  assert.equal(runtime.G.hero.charge, runtime.G.hero.cost);
+  assert.equal(runtime.context.busy, false);
+  assert.equal(runtime.calls.length, 1);
+  assert.equal(runtime.calls[0][0], 'toast');
+  assert.match(runtime.calls[0][1], /普通糖果/);
+});
+
+test('old saves gain a level-one alchemist without changing the six existing heroes or candy balance', () => {
+  const heroLv = Object.fromEntries(heroes.list.filter(hero => hero.id !== 'alchemist').map(hero => [hero.id, { a: 7, p: 4 }]));
+  const { save } = loadCampaign({ hero: 'mage', heroLv, candy: 12345 });
+  assert.equal(save.hero, 'mage');
+  assert.equal(save.candy, 12345);
+  assert.deepEqual(save.heroLv.alchemist, { a: 1, p: 1 });
+  for (const [id, levels] of Object.entries(heroLv)) assert.deepEqual(save.heroLv[id], levels);
 });

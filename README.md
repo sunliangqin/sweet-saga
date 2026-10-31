@@ -10,6 +10,7 @@ A single-file HTML match-3 game (Candy Crush Saga style). Touch friendly, no ads
 - 新增第 61–260 关、40 个章节，沿用原有障碍与特殊糖果组合；前 60 关保持不变，已通关的旧存档会自动解锁后续关卡
 - 可选挑战勋章：分数关达到二星，其余目标在至少剩 3 步时完成；英雄和道具可自由使用，首次达成各奖励 100 颗糖果，可以重玩补齐，不影响正常通关
 - 连胜宝箱：连续首次通关 3 个新关卡，自动奖励 250 颗糖果；失败会清空连胜，重玩已通关的关卡不会增加进度
+- 闯关助力：同一未通关关卡累计失败 3 次后，下次额外获得 1 步，此后每次失败再增加 1 步，最多 10 步；分数关目标分同步每档降低 3%，最多降低 30%，二星、三星标准不变。其他关卡保留完整目标。助力按关卡保存在本地，通关后清除；退出、重开或继续存档不计失败，继续存档保持该局原有难度
 - 仿照原版逐章引入障碍：糖霜（1–3 层）、甘草锁、会蔓延的巧克力、倒计时糖果炸弹；每关开始时会说明本关出现的障碍
 - 关卡开始弹窗默认只展示目标、步数和英雄选择，点选英雄即显示其技能，关卡说明仍收进「详细说明」；小屏幕和横屏可滑动查看，底部操作按钮始终可见
 - 条纹糖果、包装糖果、彩色炸弹及其组合
@@ -29,6 +30,8 @@ The campaign has 260 levels across 52 chapters, adding 200 levels to the origina
 Level intro dialogs show goals, moves, and hero selection first. Selecting a hero reveals their skills and scrolls them into view without expanding the obstacle explanations, star targets, or challenges. Start, Upgrade Heroes, and Map stay visible on small and landscape screens while the content above them scrolls.
 
 Optional mastery medals add replay goals without blocking normal wins. Each medal pays 100 candies once: reach two-star score, or finish any other goal with at least three moves left. Heroes and tools can be used freely and never affect medal eligibility. Three consecutive first-time level wins open a 250-candy chest automatically; a loss resets the streak, and replays do not advance it. Medals, streaks, and unfinished runs are saved locally.
+
+Retry assistance starts after three losses on an uncleared level: the next attempt gains one move, then one more per loss, up to ten. Score goals also decrease by 3% per tier, capped at 30%; two- and three-star thresholds and all non-score objectives stay unchanged. Assistance is saved per level and cleared on victory. Quitting or restarting does not count as a loss; resumed runs retain their original difficulty.
 
 All seven heroes have independently upgradeable active and passive skills up to level 10. Levels 1–5 are intentionally weaker, with slower charging and reduced early combat bonuses; their upgrade prices are unchanged. Levels 6–10 improve skill power, passive benefits, or charging speed; each skill's successive upgrade costs are 1,000, 2,000, 3,200, 5,000, 7,500, 10,500, 14,000, 18,000, and 23,000 candies. Existing hero levels and candy balances are preserved.
 

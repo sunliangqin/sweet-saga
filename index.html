@@ -870,6 +870,8 @@ const STR = {
   level: n => `第 ${n} 关`, 'gt.score': n => `达到 <b>${n}</b> 分！`, 'gt.jelly': '清除所有<b>果冻</b>！',
   'gt.order': '完成收集目标！', 'gt.ing': n => `把 <b>${n}</b> 个食材运送到底部！`, movesN: n => `<b>${n}</b> 步`,
   sendOne: '派出一位英雄助战：', introDetails: '详细说明', playBang: '开始！', upgradeHeroes: '升级英雄', map: '地图',
+  retryHelp: (moves, percent) => `闯关助力：额外 ${moves} 步${percent ? `，目标分降低 ${percent}%` : ''}。`,
+  retryHelpNext: '下次挑战',
   finalScore: '得分', newBest: '新纪录！', candyWon: n => `+${fmt(n)} 颗糖果`, allDone: '恭喜你通关了所有关卡！&#127852;',
   challengeTitle: '额外挑战', medalDone: '挑战勋章已获得', medalNew: '挑战勋章达成！',
   'challenge.score': '得分达到二星标准', 'challenge.jelly': '至少剩余 3 步清除全部果冻',
@@ -982,9 +984,26 @@ function challengeHTML(L, n) {
     ${save.medals[n] ? _t('medalDone') : _t('challengeReward', MEDAL_REWARD)}</div>`;
 }
 
+/* ================= retry assistance ================= */
+const RETRY_HELP_MAX = 10;
+function retryHelpLevel(i) {
+  return save.stars[i + 1] ? 0 : Math.max(0, Math.min(RETRY_HELP_MAX, (save.failures[i + 1] || 0) - 2));
+}
+function levelWithRetryHelp(i, help) {
+  const L = LEVELS[i];
+  return { ...L, moves: L.moves + help,
+    stars: L.stars.map((n, j) => j === 0 && L.goal.type === 'score' ? Math.ceil(n * (100 - help * 3) / 100) : n) };
+}
+function recordLevelFailure(i) {
+  if (!save.stars[i + 1]) save.failures[i + 1] = Math.min(RETRY_HELP_MAX + 2, (save.failures[i + 1] || 0) + 1);
+}
+function retryHelpHTML(help, type) {
+  return help ? `<div class="challenge">${_t('retryHelp', help, type === 'score' ? help * 3 : 0)}</div>` : '';
+}
+
 /* ================= local save (localStorage) ================= */
 const SAVE_KEY = 'sweetSaga.save.v1';
-const defaultSave = () => ({ unlocked: 1, stars: {}, best: {}, medals: {}, winStreak: 0, music: { on: true, vol: 1 }, sfx: { on: true, vol: 1 }, seenHelp: false, run: null, candy: 0, hero: 'warrior', heroLv: {}, seenHeroes: false });
+const defaultSave = () => ({ unlocked: 1, stars: {}, best: {}, medals: {}, failures: {}, winStreak: 0, music: { on: true, vol: 1 }, sfx: { on: true, vol: 1 }, seenHelp: false, run: null, candy: 0, hero: 'warrior', heroLv: {}, seenHeroes: false });
 let save = loadSave();
 function heroLv(id) {
   let l = save.heroLv[id];
@@ -1000,6 +1019,9 @@ if ('coins' in save) { save.candy = (save.candy | 0) + Math.round(Math.max(0, sa
 save.candy = Math.max(0, save.candy | 0);
 if (!save.medals || typeof save.medals !== 'object' || Array.isArray(save.medals)) save.medals = {};
 save.winStreak = Math.max(0, Math.min(STREAK_GOAL - 1, save.winStreak | 0));
+save.failures = Object.fromEntries(Object.entries(save.failures && typeof save.failures === 'object' && !Array.isArray(save.failures) ? save.failures : {})
+  .filter(([n, count]) => Number.isInteger(+n) && +n >= 1 && +n <= LEVELS.length && Number.isInteger(count) && count > 0 && !save.stars[n])
+  .map(([n, count]) => [n, Math.min(RETRY_HELP_MAX + 2, count)]));
 // sound settings: music and effects each have an on/off switch and a 0..1 volume (older saves had one mute flag)
 for (const k of ['music', 'sfx']) {
   const v = save[k] && typeof save[k] === 'object' ? save[k] : {};
@@ -2421,6 +2443,7 @@ async function win() {
   save.stars[n] = Math.max(save.stars[n] || 0, stars);
   if (newBest) save.best[n] = G.score;
   save.unlocked = Math.max(save.unlocked, Math.min(LEVELS.length, n + 1));
+  delete save.failures[n];
   save.run = null; persist();
   state = 'over';
   Music.duck(.3);
@@ -2428,9 +2451,11 @@ async function win() {
   showWin(stars, newBest, (G.crushed || 0) + G.rewards.bonus);
 }
 async function lose(reason) {
+  if (state === 'over') return;
   state = 'over'; busy = true; selected = null; hint = null; hammerMode = false; heroAim = false;
   clearRun(); hideToast(); updateHUD();
   G.lostStreak = save.winStreak > 0; save.winStreak = 0;
+  recordLevelFailure(G.i);
   persist();
   await wait(500);
   Music.duck(.3);
@@ -3225,6 +3250,7 @@ async function heroStart() {
 function saveRun() {
   if (!G || state !== 'play' || busy) return;
   save.run = {
+    retryHelp: G.retryHelp,
     i: G.i, moves: G.moves, score: G.score, hammer: G.hammer, shuffle: G.shuffle,
     jelly: jelly.map(r => r.slice()),
     orders: G.orders ? G.orders.map(o => o.got) : null,
@@ -3269,9 +3295,13 @@ function startLevel(i, resume) {
   closeModal(); hideToast();
   tweens.length = 0; timers.length = 0; fxList.length = 0; parts.length = 0; pops.length = 0;
   $('words').innerHTML = ''; HFX.clear();
-  const L = LEVELS[i];
+  const savedHelp = resume && save.run && save.run.i === i ? save.run.retryHelp : null;
+  const help = resume && save.run && save.run.i === i
+    ? (Number.isInteger(savedHelp) ? Math.max(0, Math.min(RETRY_HELP_MAX, savedHelp)) : 0)
+    : retryHelpLevel(i);
+  const L = levelWithRetryHelp(i, help);
   G = {
-    i, L, moves: L.moves, score: 0, shown: 0, colors: L.colors, jellyLeft: 0, hammer: 3, shuffle: 2,
+    i, L, retryHelp: help, moves: L.moves, score: 0, shown: 0, colors: L.colors, jellyLeft: 0, hammer: 3, shuffle: 2,
     orders: L.goal.type === 'order' ? L.goal.items.map(it => ({ k: it.k, n: it.n, got: 0 })) : null,
     ing: L.goal.type === 'ingredients' ? { total: L.goal.n, spawned: 0, delivered: 0, since: 0, fillSpawned: false } : null,
     hero: makeHero(save.hero), pets: [], lastStand: false, crushed: 0,
@@ -3883,6 +3913,7 @@ function showIntro() {
     <div class="goaltxt">${goalText()}</div>
     <div class="goalicons">${goalIconsHTML()}</div>
     <div class="mv">${_t('movesN', L.moves)}</div>
+    ${retryHelpHTML(G.retryHelp, L.goal.type)}
     <div class="goaltxt" style="margin-top:12px;font-size:16px;font-weight:900">${_t('sendOne')}</div>
     ${heroPickHTML(save.hero)}
     <div class="hpick-info hidden" id="hpInfo" aria-live="polite"></div>
@@ -3979,6 +4010,7 @@ function showLose(candy, reason) {
   modal(`<h2>${_t(reason === 'bomb' ? 'bombOut' : 'outOfMoves')}</h2><div class="sad">&#128546;</div><div class="why">${why}</div>
     <div><span class="candy-won"><i class="candyc"></i> ${_t('candyWon', candy)}</span></div>
     ${G.lostStreak ? `<div class="challenge">${_t('streakReset')}</div>` : ''}
+    ${retryHelpLevel(G.i) ? `<div class="targets">${_t('retryHelpNext')}</div>${retryHelpHTML(retryHelpLevel(G.i), t)}` : ''}
     <div class="tip">${_t('tipLose')}</div>
     <div class="row"><button class="btn orange" data-a="retry">${_t('tryAgain')}</button></div>
     <div class="row"><button class="btn small pink" data-a="heroes">${_t('heroes')}</button><button class="btn small blue" data-a="map">${_t('map')}</button></div>`, {

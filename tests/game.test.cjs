@@ -51,11 +51,12 @@ test('level intro reveals selected hero skills while keeping explanations collap
     scrollIntoView: options => { scrollOptions = options; },
   };
   vm.runInNewContext(html.slice(start, end) + '\nshowIntro();', {
-    G: { L: { moves: 31, stars: [46000, 61000, 78000] }, i: 259 },
+    G: { L: { moves: 31, stars: [46000, 61000, 78000], goal: { type: 'score' } }, i: 259 },
     save: { hero: 'warrior' },
     _t: key => key, fmt: String,
     goalText: () => 'goal', goalIconsHTML: () => 'icons',
     levelElementsHTML: () => 'obstacles', challengeHTML: () => 'challenge',
+    retryHelpHTML: () => '',
     heroPickHTML: () => 'heroes', heroInfoHTML: id => `skills:${id}`,
     $: id => id === 'hpInfo' ? info : { querySelectorAll: () => buttons },
     modal: (markup, handlers, cls) => { rendered = markup; actions = handlers; cardClass = cls; },
@@ -300,6 +301,134 @@ test('old saves default new rewards safely and existing rewards survive reload',
   const malformed = loadCampaign({ medals: [], winStreak: -1 });
   assert.deepEqual(malformed.save.medals, {});
   assert.equal(malformed.save.winStreak, 0);
+});
+
+test('retry assistance starts at three losses, grows gradually, and is capped per uncleared level', () => {
+  const result = evaluate(`(() => {
+    const tiers = [];
+    for (let n = 0; n < 20; n++) {
+      tiers.push(retryHelpLevel(0));
+      recordLevelFailure(0);
+    }
+    const other = retryHelpLevel(1);
+    save.stars[1] = 1;
+    recordLevelFailure(0);
+    return { tiers, other, cleared: retryHelpLevel(0), failures: save.failures };
+  })()`);
+  assert.deepEqual(result.tiers, Array.from({ length: 20 }, (_, n) => Math.max(0, Math.min(10, n - 2))));
+  assert.equal(result.other, 0);
+  assert.equal(result.cleared, 0);
+  assert.deepEqual(result.failures, { 1: 12 });
+});
+
+test('assistance changes only moves and score pass thresholds across the whole campaign', () => {
+  const assisted = evaluate('LEVELS.map((L, i) => Array.from({ length: 11 }, (_, help) => levelWithRetryHelp(i, help)))');
+  for (const [i, variants] of assisted.entries()) {
+    const original = levels[i];
+    for (const [help, L] of variants.entries()) {
+      assert.equal(L.moves, original.moves + help);
+      assert.equal(L.stars[0], original.goal.type === 'score' ? Math.ceil(original.stars[0] * (100 - help * 3) / 100) : original.stars[0]);
+      assert.deepEqual(L.stars.slice(1), original.stars.slice(1));
+      assert.deepEqual(L.goal, original.goal);
+      assert.deepEqual(L.shape, original.shape);
+      assert.deepEqual(L.obs, original.obs);
+    }
+  }
+  assert.equal(evaluate(`(() => {
+    const before = JSON.stringify(LEVELS);
+    LEVELS.forEach((L, i) => levelWithRetryHelp(i, 10));
+    return JSON.stringify(LEVELS) === before;
+  })()`), true);
+});
+
+test('retry history survives reload and invalid or cleared history is discarded', () => {
+  assert.deepEqual(loadCampaign().save.failures, {});
+  assert.deepEqual(loadCampaign({ failures: { 1: 3, 2: 99, 3: -1, 4: 1.5, 5: '3', 6: null, 7: 4, 261: 5, bad: 4 }, stars: { 7: 1 } }).save.failures, { 1: 3, 2: 12 });
+  assert.deepEqual(loadCampaign({ failures: [] }).save.failures, {});
+  assert.deepEqual(loadCampaign({ failures: null }).save.failures, {});
+  const saved = loadCampaign({ failures: { 10: 6 } }).save;
+  assert.deepEqual(loadCampaign(saved).save.failures, { 10: 6 });
+});
+
+test('assisted goals use the reduced score threshold but still require all non-score objectives', () => {
+  const start = html.indexOf('function goalDone()');
+  const end = html.indexOf('async function win()', start);
+  const context = vm.createContext({ localStorage: { getItem: () => null } });
+  vm.runInContext(campaignSource + '\n' + html.slice(start, end), context);
+  for (const help of [0, 1, 10]) {
+    vm.runInContext(`G = { L: levelWithRetryHelp(0, ${help}), moves: 0 };`, context);
+    const target = vm.runInContext('G.L.stars[0]', context);
+    assert.equal(vm.runInContext(`G.score = ${target - 1}; checkEnd();`, context), 'lose');
+    assert.equal(vm.runInContext(`G.score = ${target}; checkEnd();`, context), 'win');
+    assert.equal(vm.runInContext('G.moves = 1; checkEnd();', context), null, 'Score levels retain their end-of-moves win timing.');
+  }
+  for (const [type, incomplete, complete] of [
+    ['jelly', 'G.jellyLeft = 1', 'G.jellyLeft = 0'],
+    ['order', 'G.orders = [{ n: 10, got: 9 }]', 'G.orders[0].got = 10'],
+    ['ingredients', 'G.ing = { total: 3, delivered: 2 }', 'G.ing.delivered = 3'],
+  ]) {
+    vm.runInContext(`G = { L: { goal: { type: '${type}' } }, moves: 0 }; ${incomplete};`, context);
+    assert.equal(vm.runInContext('checkEnd();', context), 'lose');
+    vm.runInContext(complete, context);
+    assert.equal(vm.runInContext('checkEnd();', context), 'win');
+  }
+  const help = evaluate(`({
+    score: retryHelpHTML(10, 'score'),
+    jelly: retryHelpHTML(1, 'jelly'),
+    none: retryHelpHTML(0, 'score'),
+  })`);
+  assert.match(help.score, /额外 10 步，目标分降低 30%/);
+  assert.match(help.jelly, /额外 1 步/);
+  assert.doesNotMatch(help.jelly, /目标分/);
+  assert.equal(help.none, '');
+});
+
+test('game lifecycle persists assistance, retains resumed difficulty, and clears history on victory', async () => {
+  const setupStart = html.indexOf('function startLevel(');
+  const setupEnd = html.indexOf('async function dropIn()', setupStart);
+  const saveStart = html.indexOf('function saveRun()');
+  const saveEnd = html.indexOf('function applyRun(', saveStart);
+  const endStart = html.indexOf('async function win()');
+  const endEnd = html.indexOf('async function sugarCrush()', endStart);
+  let persisted;
+  const context = vm.createContext({
+    localStorage: { getItem: () => null, setItem: (key, value) => { persisted = JSON.parse(value); } },
+    tweens: [], timers: [], fxList: [], parts: [], pops: [],
+    document: { getElementById: () => ({}) }, HFX: { clear() {} }, makeHero: () => null,
+    closeModal() {}, hideToast() {}, computeCols() {}, generateBoard() {},
+    showScreen() {}, buildHeroBtn() {}, layout() {}, buildGoalUI() {}, updateHUD() {},
+    fmt: String, updateStarBar() {}, eachCell() {}, showIntro() {}, updateHeroBtn() {}, showWord() {},
+    NOW: 1, wait: async () => {}, sugarCrush: async () => {},
+    Music: { duck() {} }, Snd: { win() {}, lose() {} }, showWin() {}, showLose() {},
+    applyRun: run => vm.runInContext(`G.moves = ${run.moves}; G.score = ${run.score};`, context),
+  });
+  vm.runInContext(campaignSource + '\n' + html.slice(setupStart, setupEnd) + '\n' +
+    html.slice(saveStart, saveEnd) + '\n' + html.slice(endStart, endEnd), context);
+  const read = expression => JSON.parse(vm.runInContext(`JSON.stringify(${expression})`, context));
+  vm.runInContext('startLevel(0);', context);
+  assert.equal(read('G.retryHelp'), 0);
+  for (let n = 1; n <= 4; n++) {
+    await vm.runInContext(`state = 'play'; lose(${n === 4 ? "'bomb'" : 'undefined'});`, context);
+    assert.equal(persisted.failures[1], n);
+    await vm.runInContext('lose();', context);
+    assert.equal(persisted.failures[1], n, 'Repeated terminal calls must not count twice.');
+    vm.runInContext('startLevel(0);', context);
+    assert.equal(read('G.retryHelp'), Math.max(0, n - 2));
+  }
+  vm.runInContext(`state = 'play'; busy = false; grid = []; G.moves = 7; saveRun();`, context);
+  assert.equal(persisted.run.retryHelp, 2);
+  vm.runInContext('save.failures[1] = 12; startLevel(0, true);', context);
+  assert.equal(read('G.retryHelp'), 2);
+  assert.equal(read('G.moves'), 7);
+  assert.equal(read('G.L.moves'), levels[0].moves + 2);
+  vm.runInContext('delete save.run.retryHelp; startLevel(0, true);', context);
+  assert.equal(read('G.retryHelp'), 0, 'Legacy unfinished runs keep their original difficulty.');
+  await vm.runInContext('win();', context);
+  assert.deepEqual(persisted.failures, {});
+  assert.equal(persisted.run, null);
+  assert.ok(persisted.stars[1] > 0);
+  vm.runInContext('startLevel(0);', context);
+  assert.equal(read('G.retryHelp'), 0);
 });
 
 const heroes = evaluate(`({

@@ -870,6 +870,7 @@ const STR = {
   level: n => `第 ${n} 关`, 'gt.score': n => `达到 <b>${n}</b> 分！`, 'gt.jelly': '清除所有<b>果冻</b>！',
   'gt.order': '完成收集目标！', 'gt.ing': n => `把 <b>${n}</b> 个食材运送到底部！`, movesN: n => `<b>${n}</b> 步`,
   sendOne: '派出一位英雄助战：', introDetails: '详细说明', playBang: '开始！', upgradeHeroes: '升级英雄', map: '地图',
+  heroTransfer: '选择英雄会重置原有升级，将已投入和糖果罐里的糖果自动分配给新英雄：主动、被动均衡升级，多余优先主动；不足升级或满级后的糖果保留。',
   retryHelp: (moves, percent) => `闯关助力：额外 ${moves} 步${percent ? `，目标分降低 ${percent}%` : ''}。`,
   retryHelpNext: '下次挑战',
   finalScore: '得分', newBest: '新纪录！', candyWon: n => `+${fmt(n)} 颗糖果`, allDone: '恭喜你通关了所有关卡！&#127852;',
@@ -3896,7 +3897,23 @@ function heroInfoHTML(id) {
 }
 function chooseHero(id) {
   if (!HERO[id]) return;
+  // Recover every hero's investment, including upgrades spread across older saves.
+  for (const H of HERO_LIST) {
+    const l = heroLv(H.id);
+    for (const which of ['a', 'p']) {
+      for (let lv = 1; lv < l[which]; lv++) save.candy += UPG[lv - 1];
+      l[which] = 1;
+    }
+  }
+  const l = heroLv(id);
+  while (l.a < MAXLV || l.p < MAXLV) {
+    const which = l.a <= l.p ? 'a' : 'p', lv = l[which];
+    if (lv >= MAXLV || save.candy < UPG[lv - 1]) break;
+    save.candy -= UPG[lv - 1];
+    l[which]++;
+  }
   save.hero = id; persist();
+  refreshCandy();
   if (G && state === 'intro') { G.hero = makeHero(id); buildHeroBtn(); Music.play(id); }
 }
 function levelElementsHTML(L) {
@@ -3916,6 +3933,7 @@ function showIntro() {
     ${retryHelpHTML(G.retryHelp, L.goal.type)}
     <div class="goaltxt" style="margin-top:12px;font-size:16px;font-weight:900">${_t('sendOne')}</div>
     ${heroPickHTML(save.hero)}
+    <div class="hd-cost">${_t('heroTransfer')}</div>
     <div class="hpick-info hidden" id="hpInfo" aria-live="polite"></div>
     <details class="intro-details"><summary>${_t('introDetails')}</summary>
       ${levelElementsHTML(L)}
@@ -4066,6 +4084,7 @@ function heroDetail(id, noAnim) {
   modal(`<h2 style="background:linear-gradient(180deg,${H.light},${H.color});text-shadow:0 3px 0 ${H.dark}">${H.name}</h2>
     <div class="hd-head"><img src="${heroImg(id)}" alt=""><div><div class="hc">${clsLabel(H)}</div><div class="ht">${H.trait}</div><div class="hd-theme">&#9835; ${_t('theme.' + id)}</div></div></div>
     ${skillHTML(H, 'a')}${skillHTML(H, 'p')}
+    <div class="hd-cost">${_t('heroTransfer')}</div>
     <div class="row">${sel ? `<button class="btn small" disabled>${_t('selectedCheck')}</button>` : `<button class="btn small" data-a="pick">${_t('sendHero')}</button>`}<button class="btn small blue" data-a="close">${_t('close')}</button></div>
     <div class="hd-cost" style="margin-top:8px">${_t('youHave', fmt(save.candy))}</div>`, {
     upa: () => upgrade(id, 'a'), upp: () => upgrade(id, 'p'),

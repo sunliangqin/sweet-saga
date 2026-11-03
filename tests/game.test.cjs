@@ -26,6 +26,90 @@ function loadCampaign(saved = null) {
 const campaign = loadCampaign();
 const { levels, episodes, names } = campaign;
 
+function selectHeroes(saved, ids, state = 'map') {
+  const start = html.indexOf('function chooseHero(');
+  const end = html.indexOf('function levelElementsHTML(', start);
+  assert.ok(start >= 0 && end > start);
+  const heroStart = html.indexOf('const costAt =');
+  const heroEnd = html.indexOf('function chargeHero(', heroStart);
+  assert.ok(heroStart >= 0 && heroEnd > heroStart);
+  let stored;
+  return JSON.parse(vm.runInNewContext(campaignSource + html.slice(heroStart, heroEnd) + html.slice(start, end) + `
+    const calls = [];
+    const G = { hero: { id: save.hero, charge: 99 } };
+    function refreshCandy() { calls.push(['candy', save.candy]); }
+    function buildHeroBtn() { calls.push(['button', G.hero.id]); }
+    const Music = { play(id) { calls.push(['music', id]); } };
+    for (const id of ids) chooseHero(id);
+    JSON.stringify({ save, hero: G.hero, calls, stored: JSON.parse(localStorage.getItem(SAVE_KEY)) });
+  `, {
+    state, ids,
+    localStorage: {
+      getItem: () => stored === undefined ? JSON.stringify(saved) : stored,
+      setItem: (key, value) => { assert.equal(key, 'sweetSaga.save.v1'); stored = value; },
+    },
+  }, { timeout: 5000 }));
+}
+
+test('hero selection balances upgrades at every price boundary, giving the odd upgrade to active', () => {
+  const { prices, max } = evaluate('({ prices: UPG, max: MAXLV })');
+  let spent = 0;
+  for (let lv = 1; lv < max; lv++) {
+    const cost = prices[lv - 1];
+    for (const [candy, a, p, left] of [
+      [spent, lv, lv, 0],
+      [spent + cost - 1, lv, lv, cost - 1],
+      [spent + cost, lv + 1, lv, 0],
+      [spent + cost * 2 - 1, lv + 1, lv, cost - 1],
+      [spent + cost * 2, lv + 1, lv + 1, 0],
+    ]) {
+      const result = selectHeroes({ candy }, ['mage']);
+      assert.deepEqual(result.save.heroLv.mage, { a, p }, `budget ${candy}`);
+      assert.equal(result.save.candy, left);
+      assert.equal(result.save.hero, 'mage');
+      assert.deepEqual(result.stored, result.save);
+      assert.deepEqual(result.calls, [['candy', left]]);
+    }
+    spent += cost * 2;
+  }
+  const capped = selectHeroes({ candy: spent + 7654 }, ['alchemist']);
+  assert.deepEqual(capped.save.heroLv.alchemist, { a: max, p: max });
+  assert.equal(capped.save.candy, 7654);
+});
+
+test('hero selection refunds all legacy investments without losing resources across repeated switches', () => {
+  const prices = evaluate('UPG');
+  const saved = {
+    candy: 4321, hero: 'warrior',
+    heroLv: { warrior: { a: 7, p: 3 }, mage: { a: 2, p: 5 }, rogue: { a: 4, p: 2 } },
+    stars: { 1: 3 }, best: { 1: 9000 },
+  };
+  const total = s => s.candy + Object.values(s.heroLv).reduce((sum, l) =>
+    sum + prices.slice(0, l.a - 1).reduce((a, b) => a + b, 0)
+      + prices.slice(0, l.p - 1).reduce((a, b) => a + b, 0), 0);
+  const once = selectHeroes(saved, ['mage']).save;
+  const repeated = selectHeroes(saved, ['mage', 'mage', 'rogue', 'warrior', 'mage']).save;
+  assert.equal(total(once), total(saved));
+  assert.deepEqual(repeated, once);
+  assert.deepEqual(once.stars, saved.stars);
+  assert.deepEqual(once.best, saved.best);
+  for (const [id, l] of Object.entries(once.heroLv)) {
+    if (id !== 'mage') assert.deepEqual(l, { a: 1, p: 1 });
+  }
+  assert.ok(once.heroLv.mage.a >= once.heroLv.mage.p);
+  assert.ok(once.heroLv.mage.a - once.heroLv.mage.p <= 1);
+});
+
+test('intro selection rebuilds the battle hero using transferred upgrades and persists them on reload', () => {
+  const result = selectHeroes({ candy: 3000, hero: 'warrior' }, ['mage'], 'intro');
+  assert.deepEqual(result.save.heroLv.mage, { a: 2, p: 2 });
+  assert.equal(result.hero.id, 'mage');
+  assert.equal(result.hero.cost, evaluate('HERO.mage.cost[1]'));
+  assert.equal(result.hero.charge, 0);
+  assert.deepEqual(result.calls, [['candy', 1000], ['button', 'mage'], ['music', 'mage']]);
+  assert.deepEqual(loadCampaign(result.stored).save, result.save);
+});
+
 test('the complete inline game script parses', () => {
   const script = html.match(/<script>([\s\S]*?)<\/script>/);
   assert.ok(script);

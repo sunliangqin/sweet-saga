@@ -17,6 +17,7 @@ A single-file HTML match-3 game (Candy Crush Saga style). Touch friendly, no ads
 - 7 位英雄（战士、法师、盗贼、牧师、弓箭手、召唤师、炼糖师），每关派出一位，各有主动和被动技能
 - 炼糖师「泡泡糖」：随机把普通糖果变成条纹、包装或彩色炸弹，保留在棋盘上供组合使用；主动技能 1–10 级每次最多炼成 1–4 颗，被动技能使每颗彩色炸弹几率从 5% 升至 32%。已有特殊糖果、食材、障碍、锁定和倒计时糖果不会被替换；没有可变形糖果时不消耗充能
 - 每位英雄的主动、被动技能均可升至 10 级；1–5 级降低前期强度、放慢充能，6–10 级逐步增强技能、被动效果或充能速度，升级费用递增，原有升级费用保持不变
+- 选择英雄时，所有英雄的已有升级重置为 1 级，已投入的糖果全额回收，与糖果罐余额一起自动升级所选英雄；主动、被动均衡升级，不能成对升级时优先主动。满级或不足一次升级费用的糖果留在糖果罐；旧存档中分散的升级投入也会回收，重复选择不会损失资源
 - 1–10 级平滑成长：每次升级的充能消耗降幅不超过 10%，数量型效果每级最多增加 1，概率型效果每级最多增加 10 个百分点，避免跨级强度突变
 - 没有金币：消除的每一颗糖果都会存进糖果罐，用来升级英雄技能（升级需要很多糖果，英雄成长较慢）
 - 每位英雄都有自己的原创主题音乐和口号；地图和标题界面播放八音盒主题曲
@@ -33,7 +34,7 @@ Optional mastery medals add replay goals without blocking normal wins. Each meda
 
 Retry assistance starts after three losses on an uncleared level: the next attempt gains one move, then one more per loss, up to ten. Score goals also decrease by 3% per tier, capped at 30%; two- and three-star thresholds and all non-score objectives stay unchanged. Assistance is saved per level and cleared on victory. Quitting or restarting does not count as a loss; resumed runs retain their original difficulty.
 
-All seven heroes have independently upgradeable active and passive skills up to level 10. Levels 1–5 are intentionally weaker, with slower charging and reduced early combat bonuses; their upgrade prices are unchanged. Levels 6–10 improve skill power, passive benefits, or charging speed; each skill's successive upgrade costs are 1,000, 2,000, 3,200, 5,000, 7,500, 10,500, 14,000, 18,000, and 23,000 candies. Existing hero levels and candy balances are preserved.
+All seven heroes have active and passive skills up to level 10. Selecting a hero resets all heroes' upgrades to level 1 and fully refunds their original candy costs, including investments spread across older saves. The refund and candy-jar balance automatically upgrade the selected hero evenly, with active skills first when only one upgrade is affordable. Candies left after reaching the cap or below the next upgrade price stay in the jar; repeated selections conserve resources. Manual upgrades remain available. Levels 1–5 are intentionally weaker, with slower charging and reduced early combat bonuses; their upgrade prices are unchanged. Levels 6–10 improve skill power, passive benefits, or charging speed; each skill's successive upgrade costs are 1,000, 2,000, 3,200, 5,000, 7,500, 10,500, 14,000, 18,000, and 23,000 candies. Existing hero levels and candy balances are preserved until a hero is selected.
 
 The new alchemist, Bubblegum, transforms up to 1–4 random ordinary candies into striped candies, wrapped candies, or color bombs as the active skill levels up. The passive skill raises the color-bomb chance per candy from 5% to 32%; the remaining chance is split evenly between striped and wrapped candies. Created specials stay on the board for later combinations. Existing specials, ingredients, blockers, locked candies, and countdown candies are protected, and casting with no eligible candy keeps the full charge. Existing saves gain this hero at level 1 without changing other upgrades.
 
